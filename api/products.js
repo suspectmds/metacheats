@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const urlParts = req.url.split('/').filter(Boolean);
     const productId = urlParts.length > 2 ? urlParts[2].split('?')[0] : req.query.id;
 
-    // Handle Product Detail (Strict Cache for details too)
+    // Handle Product Detail
     if (productId) {
         try {
             const shopId = SHOP_IDS[0];
@@ -26,12 +26,12 @@ export default async function handler(req, res) {
             });
             return res.status(200).json(response.data);
         } catch (error) {
-            console.error(`SellAuth Detail Fetch Error:`, error.message);
+            console.error(`Detail Fetch Error:`, error.message);
             return res.status(500).json({ error: "Failed to fetch product details" });
         }
     }
 
-    // Handle Groups Fetch (Emergency Cache logic)
+    // Handle Groups Fetch (with Product Reconstruction)
     try {
         const now = Date.now();
         if (groupsCache.data && (now - groupsCache.timestamp < CACHE_DURATION)) {
@@ -39,16 +39,33 @@ export default async function handler(req, res) {
         }
 
         let allGroups = [];
+        let allProducts = [];
+
         for (const shopId of SHOP_IDS) {
             try {
-                const resp = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
-                    headers: { 'Authorization': `Bearer ${API_KEY}` },
-                    timeout: 7000
+                const [gRes, pRes] = await Promise.all([
+                    axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
+                        headers: { 'Authorization': `Bearer ${API_KEY}` },
+                        timeout: 10000
+                    }),
+                    axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products?per_page=100`, {
+                        headers: { 'Authorization': `Bearer ${API_KEY}` },
+                        timeout: 10000
+                    })
+                ]);
+
+                const shopGroups = gRes.data.data || [];
+                const shopProducts = pRes.data.data || [];
+
+                // Map products to groups
+                shopGroups.forEach(group => {
+                    group.products = shopProducts.filter(p => p.group_id === group.id);
                 });
-                allGroups = [...allGroups, ...(resp.data.data || [])];
+
+                allGroups = [...allGroups, ...shopGroups];
             } catch (inner) {
-                if (inner.response?.status === 429) throw inner; // Bubble up 429 to return stale data
-                console.error(`Shop ${shopId} Fetch Error:`, inner.message);
+                if (inner.response?.status === 429) throw inner;
+                console.error(`Shop ${shopId} Sync Error:`, inner.message);
             }
         }
 
@@ -58,12 +75,9 @@ export default async function handler(req, res) {
         res.status(200).json({ groups: allGroups });
     } catch (error) {
         console.error('Core Sync API Error:', error.message);
-
-        // Return stale data if available during rate limit
         if (groupsCache.data) {
             return res.status(200).json({ groups: groupsCache.data, isStale: true });
         }
-
-        res.status(429).json({ error: "Rate limit active. Please wait 10 minutes." });
+        res.status(429).json({ error: "Rate limit active." });
     }
 };

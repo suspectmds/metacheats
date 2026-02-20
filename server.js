@@ -57,18 +57,33 @@ app.get('/api/products', async (req, res) => {
         let allGroups = [];
         for (const shopId of SHOP_IDS) {
             try {
-                const resp = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
-                    headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
-                    timeout: 5000 // Short timeout to avoid hanging
+                const [gRes, pRes] = await Promise.all([
+                    axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
+                        headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
+                        timeout: 10000
+                    }),
+                    axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products?per_page=100`, {
+                        headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
+                        timeout: 10000
+                    })
+                ]);
+
+                const groups = gRes.data.data || [];
+                const products = pRes.data.data || [];
+
+                // Reconstruct Hierarchy
+                groups.forEach(group => {
+                    group.products = products.filter(p => p.group_id === group.id);
                 });
-                allGroups = [...allGroups, ...(resp.data.data || [])];
+
+                allGroups = [...allGroups, ...groups];
             } catch (innerError) {
                 if (innerError.response?.status === 429) {
                     console.error(`SellAuth RATE LIMIT (429) on Shop ${shopId}. Backing off.`);
                     // Throw to outer catch to return stale data
                     throw innerError;
                 }
-                console.error(`Error fetching Shop ${shopId}:`, innerError.message);
+                console.error(`Shop ${shopId} Fetch Error:`, innerError.message);
             }
         }
 
@@ -87,7 +102,7 @@ app.get('/api/products', async (req, res) => {
             return res.json({ groups: cached.data, isStale: true });
         }
 
-        res.status(429).json({ error: "Too many requests. Please wait 5 minutes.", type: "rate_limit" });
+        res.status(429).json({ error: "Rate limit active." });
     }
 });
 
