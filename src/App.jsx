@@ -185,6 +185,12 @@ const MetaCheats = () => {
   const SELLAUTH_STORE_URL = "https://metacheat.mysellauth.com"; // Official SellAuth Link
 
   const handlePurchase = (productId) => {
+    // If no real ID yet, redirect to main store
+    if (!productId || productId.includes('PROD_ID') || productId.includes('ACC_ID')) {
+      window.open(SELLAUTH_STORE_URL, '_blank');
+      return;
+    }
+
     // Official SellAuth Embed Trigger
     if (window.SellAuth) {
       window.SellAuth.open(productId);
@@ -199,19 +205,19 @@ const MetaCheats = () => {
   };
 
   const games = [
-    { name: "Apex Legends", status: "Undetected", since: "2 weeks", productId: "PROD_ID_APEX", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
-    { name: "Counter-Strike 2", status: "Undetected", since: "1 month", productId: "PROD_ID_CS2", image: "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=800&q=80" },
-    { name: "DayZ", status: "Updating", since: "1 day", productId: "PROD_ID_DAYZ", image: "https://images.unsplash.com/photo-1552824236-077641c1d1fa?auto=format&fit=crop&w=800&q=80" },
-    { name: "Rust", status: "Undetected", since: "3 weeks", productId: "PROD_ID_RUST", image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80" },
-    { name: "Fortnite", status: "Use at Risk", since: "3 days", productId: "PROD_ID_FORTNITE", image: "https://images.unsplash.com/photo-1589241062272-c0a000072dfa?auto=format&fit=crop&w=800&q=80" },
-    { name: "Call of Duty", status: "Undetected", since: "5 days", productId: "PROD_ID_COD", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" }
+    { name: "Apex Legends", status: "Undetected", since: "2 weeks", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
+    { name: "Counter-Strike 2", status: "Undetected", since: "1 month", image: "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=800&q=80" },
+    { name: "DayZ", status: "Updating", since: "1 day", image: "https://images.unsplash.com/photo-1552824236-077641c1d1fa?auto=format&fit=crop&w=800&q=80" },
+    { name: "Rust", status: "Undetected", since: "3 weeks", image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80" },
+    { name: "Fortnite", status: "Use at Risk", since: "3 days", image: "https://images.unsplash.com/photo-1589241062272-c0a000072dfa?auto=format&fit=crop&w=800&q=80" },
+    { name: "Call of Duty", status: "Undetected", since: "5 days", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" }
   ];
 
   const accounts = [
-    { name: "Apex Masters Account", price: "$45.00", stock: "12", productId: "ACC_ID_APEX", platform: "Steam", skins: "150+", level: "500", rank: "Masters" },
-    { name: "CS2 Prime Global", price: "$32.00", stock: "5", productId: "ACC_ID_CS2", platform: "Steam", skins: "Knife + Gloves", level: "40", rank: "Global Elite" },
-    { name: "Valorant Ascendant", price: "$28.00", stock: "8", productId: "ACC_ID_VAL", platform: "Riot", skins: "Vandal + Phantom", level: "65", rank: "Ascendant" },
-    { name: "Fortnite OG Account", price: "$120.00", stock: "2", productId: "ACC_ID_FORTNITE", platform: "Epic", skins: "Renegade Raider", level: "1200", rank: "N/A" }
+    { name: "Apex Masters Account", price: "$45.00", stock: "12", platform: "Steam", skins: "150+", level: "500", rank: "Masters" },
+    { name: "CS2 Prime Global", price: "$32.00", stock: "5", platform: "Steam", skins: "Knife + Gloves", level: "40", rank: "Global Elite" },
+    { name: "Valorant Ascendant", price: "$28.00", stock: "8", platform: "Riot", skins: "Vandal + Phantom", level: "65", rank: "Ascendant" },
+    { name: "Fortnite OG Account", price: "$120.00", stock: "2", platform: "Epic", skins: "Renegade Raider", level: "1200", rank: "N/A" }
   ];
 
   const DepositModal = () => (
