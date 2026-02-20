@@ -26,6 +26,8 @@ import {
   FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from './lib/supabase';
+import AuthModal from './components/AuthModal';
 
 const MetaCheats = () => {
   const [view, setView] = useState('Home');
@@ -38,6 +40,8 @@ const MetaCheats = () => {
   const [liveAccounts, setLiveAccounts] = useState([]);
   const [liveReviews, setLiveReviews] = useState([]);
   const [syncStatus, setSyncStatus] = useState('Initializing...');
+  const [user, setUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // DYNAMIC REVIEW GROWTH ENGINE
   const launchDate = new Date('2026-02-01');
@@ -111,6 +115,25 @@ const MetaCheats = () => {
     script.async = true;
     document.body.appendChild(script);
 
+    // Initial Auth Session Check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setUser(session.user);
+        setIsLoggedIn(true);
+      }
+    });
+
+    // Listen for Auth Changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setUser(session.user);
+        setIsLoggedIn(true);
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+      }
+    });
+
     // Poll for balance updates from backend
     const interval = setInterval(async () => {
       try {
@@ -183,8 +206,15 @@ const MetaCheats = () => {
     return () => {
       window.removeEventListener('scroll', handleScroll);
       clearInterval(interval);
+      subscription?.unsubscribe();
     };
   }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsLoggedIn(false);
+    setUser(null);
+  };
 
   const handleLogin = (admin = false) => {
     setIsLoggedIn(true);
@@ -204,6 +234,12 @@ const MetaCheats = () => {
   const SELLAUTH_STORE_URL = "https://metacheat.mysellauth.com"; // Official SellAuth Link
 
   const handlePurchase = (productId, productPath) => {
+    // REQUIRE LOGIN FOR PURCHASE
+    if (!isLoggedIn) {
+      setShowAuthModal(true);
+      return;
+    }
+
     // If we have a path (provided by SellAuth API), use it directly
     if (productPath) {
       window.open(`${SELLAUTH_STORE_URL}/product/${productPath}`, '_blank');
@@ -1058,6 +1094,14 @@ const MetaCheats = () => {
           <p className="text-[10px] font-bold text-gray-700 tracking-[0.3em]">© 2026 METACHEATS - ALL RIGHTS RESERVED.</p>
         </div>
       </footer>
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={(u) => {
+          setUser(u);
+          setIsLoggedIn(true);
+        }}
+      />
     </div>
   );
 };
