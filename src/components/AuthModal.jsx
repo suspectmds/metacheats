@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, Shield, X, ArrowRight, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Mail, Lock, Shield, X, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
+import { supabase, checkConfig } from '../lib/supabase';
 
 const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
     const [isLogin, setIsLogin] = useState(true);
@@ -15,6 +15,13 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+
+        const config = checkConfig();
+        if (!config.isConfigured) {
+            setError(`CRITICAL: Environment variables not detected. Expected 'VITE_SUPABASE_URL' and 'VITE_SUPABASE_ANON_KEY' in Vercel.`);
+            setLoading(false);
+            return;
+        }
 
         try {
             if (isLogin) {
@@ -37,7 +44,10 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
                 setConfirmationSent(true);
             }
         } catch (err) {
-            setError(err.message);
+            console.error("Auth Exception:", err);
+            setError(err.message === "Failed to fetch"
+                ? "Failed to connect to Database. Please verify VITE_SUPABASE_URL is correct."
+                : err.message);
         } finally {
             setLoading(false);
         }
