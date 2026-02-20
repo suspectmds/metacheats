@@ -21,9 +21,18 @@ app.get('/api/balance', (req, res) => {
     res.json({ balance: 240.25 });
 });
 
+// In-memory cache
+let groupsCache = { data: null, timestamp: 0 };
+const CACHE_DURATION = 60000; // 1 minute
+
 // Products Proxy
 app.get('/api/products', async (req, res) => {
     try {
+        const now = Date.now();
+        if (groupsCache.data && (now - groupsCache.timestamp < CACHE_DURATION)) {
+            return res.json({ groups: groupsCache.data });
+        }
+
         let allGroups = [];
         for (const shopId of SHOP_IDS) {
             const resp = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
@@ -31,10 +40,33 @@ app.get('/api/products', async (req, res) => {
             });
             allGroups = [...allGroups, ...(resp.data.data || [])];
         }
+
+        // Update Cache
+        groupsCache = { data: allGroups, timestamp: now };
         res.json({ groups: allGroups });
     } catch (error) {
         console.error('SellAuth Local Proxy Error:', error.message);
+        // If fetch fails, return cached data if available, even if expired
+        if (groupsCache.data) return res.json({ groups: groupsCache.data });
         res.status(500).json({ error: "Failed to fetch products" });
+    }
+});
+
+// Specific Product Proxy (for Variants/Descriptions)
+app.get('/api/products/:productId', async (req, res) => {
+    try {
+        const { productId } = req.params;
+        // Search through shop IDs for the product (using the first one for now as it's typically a 1:1 map in config)
+        const shopId = SHOP_IDS[0];
+
+        const response = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${productId}`, {
+            headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` }
+        });
+
+        res.json(response.data);
+    } catch (error) {
+        console.error(`SellAuth Product [${req.params.productId}] Fetch Error:`, error.message);
+        res.status(500).json({ error: "Failed to fetch product details" });
     }
 });
 
