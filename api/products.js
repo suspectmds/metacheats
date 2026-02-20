@@ -1,6 +1,6 @@
-const axios = require('axios');
+import axios from 'axios';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
     const API_KEY = process.env.SELLAUTH_API_KEY;
     const SHOP_ID = process.env.SELLAUTH_SHOP_ID;
 

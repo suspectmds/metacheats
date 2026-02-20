@@ -8,6 +8,7 @@ const CheckoutModal = ({ isOpen, onClose, product }) => {
     const [copied, setCopied] = useState(false);
 
     const paymentMethods = [
+        { id: 'square', name: 'Square (Cards & Crypto)', icon: <CreditCard className="text-hacker-green" />, hint: 'Fastest verification' },
         { id: 'ltc', name: 'Litecoin (LTC)', icon: <Bitcoin className="text-blue-400" />, addr: 'Lhw9K8J...v7p2q', hint: 'Fastest & Lowest Fees' },
         { id: 'btc', name: 'Bitcoin (BTC)', icon: <Bitcoin className="text-yellow-500" />, addr: 'bc1qxy2...w9rvp', hint: 'Network fees may apply' },
         { id: 'cashapp', name: 'CashApp', icon: <Share2 className="text-green-500" />, addr: '$MetaPayment', hint: 'Manual verification required' },
@@ -72,34 +73,58 @@ const CheckoutModal = ({ isOpen, onClose, product }) => {
 
                     {step === 2 && selectedMethod && (
                         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                            <div className="text-center">
-                                <div className="text-xs font-black text-hacker-green uppercase tracking-[0.2em] mb-2">Send Payment To</div>
-                                <div className="inline-block p-4 bg-white rounded-2xl mb-4">
-                                    <div className="w-32 h-32 bg-gray-200 rounded flex items-center justify-center text-black text-[10px]">QR Placeholder</div>
+                            {selectedMethod.id === 'square' ? (
+                                <div className="space-y-6">
+                                    <div className="text-center">
+                                        <div className="text-xs font-black text-hacker-green uppercase tracking-[0.2em] mb-2">Secure Card Processing</div>
+                                        <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
+                                            {/* Simulated Square Web Payment Form */}
+                                            <div className="h-12 bg-black/40 border border-white/5 rounded flex items-center px-4 text-gray-600 text-[10px] font-mono">
+                                                CARD NUMBER: •••• •••• •••• ••••
+                                            </div>
+                                            <div className="flex gap-4">
+                                                <div className="h-12 flex-1 bg-black/40 border border-white/5 rounded flex items-center px-4 text-gray-600 text-[10px] font-mono">EXP: MM/YY</div>
+                                                <div className="h-12 w-24 bg-black/40 border border-white/5 rounded flex items-center px-4 text-gray-600 text-[10px] font-mono">CVV</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-hacker-green/5 border border-hacker-green/20 p-4 rounded-xl flex gap-3 italic">
+                                        <Shield className="text-hacker-green shrink-0" size={18} />
+                                        <p className="text-[10px] text-hacker-green/80 font-bold leading-relaxed">Encrypted via Square Secure Gateway. No card data is stored on our servers.</p>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <>
+                                    <div className="text-center">
+                                        <div className="text-xs font-black text-hacker-green uppercase tracking-[0.2em] mb-2">Send Payment To</div>
+                                        <div className="inline-block p-4 bg-white rounded-2xl mb-4">
+                                            <div className="w-32 h-32 bg-gray-200 rounded flex items-center justify-center text-black text-[10px]">QR Placeholder</div>
+                                        </div>
+                                    </div>
 
-                            <div className="bg-black/40 border border-white/5 rounded-2xl p-4 space-y-3">
-                                <div className="flex justify-between items-center text-[9px] font-black text-gray-500 uppercase tracking-widest">
-                                    <span>{selectedMethod.name} Address</span>
-                                    {copied && <span className="text-hacker-green animate-pulse">Copied to Clipboard</span>}
-                                </div>
-                                <div className="flex gap-3">
-                                    <div className="flex-1 font-mono text-xs text-white truncate items-center flex">{selectedMethod.addr}</div>
-                                    <button onClick={() => handleCopy(selectedMethod.addr)} className="p-3 bg-white/5 rounded-xl hover:text-hacker-green transition-colors"><Copy size={16} /></button>
-                                </div>
-                            </div>
+                                    <div className="bg-black/40 border border-white/5 rounded-2xl p-4 space-y-3">
+                                        <div className="flex justify-between items-center text-[9px] font-black text-gray-500 uppercase tracking-widest">
+                                            <span>{selectedMethod.name} Address</span>
+                                            {copied && <span className="text-hacker-green animate-pulse">Copied to Clipboard</span>}
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 font-mono text-xs text-white truncate items-center flex">{selectedMethod.addr}</div>
+                                            <button onClick={() => handleCopy(selectedMethod.addr)} className="p-3 bg-white/5 rounded-xl hover:text-hacker-green transition-colors"><Copy size={16} /></button>
+                                        </div>
+                                    </div>
 
-                            <div className="bg-yellow-500/5 border border-yellow-500/20 p-4 rounded-xl flex gap-3 italic">
-                                <AlertCircle className="text-yellow-500 shrink-0" size={18} />
-                                <p className="text-[10px] text-yellow-500/80 font-bold leading-relaxed">System takes 1-3 network confirmations. Once sent, click verify below to finalize your delivery order.</p>
-                            </div>
+                                    <div className="bg-yellow-500/5 border border-yellow-500/20 p-4 rounded-xl flex gap-3 italic">
+                                        <AlertCircle className="text-yellow-500 shrink-0" size={18} />
+                                        <p className="text-[10px] text-yellow-500/80 font-bold leading-relaxed">System takes 1-3 network confirmations. Once sent, click verify below to finalize your delivery order.</p>
+                                    </div>
+                                </>
+                            )}
 
                             <button
                                 onClick={() => setStep(3)}
                                 className="w-full py-4 bg-hacker-green text-black font-black uppercase text-xs rounded-xl shadow-[0_0_20px_rgba(0,255,0,0.2)] hover:shadow-[0_0_30px_rgba(0,255,0,0.4)] transition-all"
                             >
-                                I have Sent the Payment
+                                {selectedMethod.id === 'square' ? 'Authorize Payment' : 'I have Sent the Payment'}
                             </button>
                         </motion.div>
                     )}

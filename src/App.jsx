@@ -47,6 +47,7 @@ const MetaCheats = () => {
   const [bulkCategory, setBulkCategory] = useState('Keys');
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [squareCreds, setSquareCreds] = useState({ appId: '', locationId: '' });
 
   // DYNAMIC REVIEW GROWTH ENGINE
   const launchDate = new Date('2026-02-01');
@@ -274,8 +275,8 @@ const MetaCheats = () => {
 
   const games = [
     { name: "Apex Legends", status: "Undetected", since: "2 weeks", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
-    { name: "Counter-Strike 2", status: "Undetected", since: "1 month", image: "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=800&q=80" },
-    { name: "DayZ", status: "Updating", since: "1 day", image: "https://images.unsplash.com/photo-1552824236-077641c1d1fa?auto=format&fit=crop&w=800&q=80" },
+    { name: "Counter-Strike 2", status: "Undetected", since: "1 month", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
+    { name: "DayZ", status: "Updating", since: "1 day", image: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=800&q=80" }, // More reliable link
     { name: "Rust", status: "Undetected", since: "3 weeks", image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80" },
     { name: "Fortnite", status: "Use at Risk", since: "3 days", image: "https://images.unsplash.com/photo-1589241062272-c0a000072dfa?auto=format&fit=crop&w=800&q=80" },
     { name: "Call of Duty", status: "Undetected", since: "5 days", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" }
@@ -712,8 +713,8 @@ const MetaCheats = () => {
               className="group relative bg-[#0d0d0d] rounded-xl overflow-hidden border border-white/5 hover:border-hacker-green/50 transition-all cursor-pointer"
             >
               <div className="aspect-[16/10] relative">
-                <img src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all duration-700" alt={game.name} />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent" />
+                <img src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" alt={game.name} />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity" />
 
                 {/* Status Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center translate-y-4">
@@ -955,6 +956,44 @@ const MetaCheats = () => {
               className="w-full py-4 bg-hacker-green text-black font-black uppercase text-xs rounded-xl shadow-[0_0_20px_rgba(0,255,0,0.2)] hover:shadow-[0_0_30px_rgba(0,255,0,0.4)] transition-all flex items-center justify-center gap-2 group"
             >
               <Database size={16} /> Finalize Inbound {bulkCategory}
+            </button>
+          </div>
+        </div>
+
+        <div className="glass p-8 rounded-2xl">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 bg-hacker-green/10 rounded-xl flex items-center justify-center text-hacker-green">
+              <CreditCard size={20} />
+            </div>
+            <div>
+              <h3 className="font-black uppercase italic">Square Credentials</h3>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Connect your card processing</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Application ID</label>
+              <input
+                type="text"
+                value={squareCreds.appId}
+                onChange={(e) => setSquareCreds({ ...squareCreds, appId: e.target.value })}
+                placeholder="sq-app-id..."
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-white focus:border-hacker-green/50 outline-none transition-all"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Location ID</label>
+              <input
+                type="text"
+                value={squareCreds.locationId}
+                onChange={(e) => setSquareCreds({ ...squareCreds, locationId: e.target.value })}
+                placeholder="LXXXXXXX..."
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-white focus:border-hacker-green/50 outline-none transition-all"
+              />
+            </div>
+            <button className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-hacker-green/10 hover:border-hacker-green/30 transition-all">
+              Save Credentials
             </button>
           </div>
         </div>

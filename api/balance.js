@@ -1,7 +1,7 @@
 // api/balance.js - Serverless function to sync balance via API key (FREE Plan Solution)
-const axios = require('axios');
+import axios from 'axios';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
     const { username } = req.query;
     const API_KEY = process.env.SELLAUTH_API_KEY;
     const SHOP_ID = process.env.SELLAUTH_SHOP_ID; // User should add this to Vercel

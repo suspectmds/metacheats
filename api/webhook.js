@@ -1,6 +1,6 @@
-const crypto = require('crypto');
+import crypto from 'crypto';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
     const signature = req.headers['x-sellauth-signature'];
