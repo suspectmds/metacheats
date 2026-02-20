@@ -42,21 +42,29 @@ const MetaCheats = () => {
   useEffect(() => {
     const fetchEverything = async () => {
       try {
-        setSyncStatus('Synchronizing...');
+        setSyncStatus('Initiating Core Sync...');
         const res = await fetch('/api/products');
-        const data = await res.json();
 
-        if (data.groups && data.groups.length > 0) {
+        if (res.status === 429) {
+          setSyncStatus('Rate Limit: Cooling off...');
+          setTimeout(() => setIsAppInitializing(false), 3000);
+          return;
+        }
+
+        const data = await res.json();
+        if (data && data.groups) {
           setLiveGroups(data.groups);
           let allProds = [];
           data.groups.forEach(g => {
             if (g.products) allProds = [...allProds, ...g.products.map(p => ({ ...p, groupId: g.id }))];
           });
           setLiveGames(allProds);
+          setSyncStatus('Sector Synchronized');
+          setTimeout(() => setIsAppInitializing(false), 1500);
+        } else {
+          setSyncStatus('No Sync Data Found');
+          setTimeout(() => setIsAppInitializing(false), 2000);
         }
-
-        setSyncStatus('Ready');
-        setTimeout(() => setIsAppInitializing(false), 2000);
       } catch (e) {
         setSyncStatus('Fallback Active');
         setTimeout(() => setIsAppInitializing(false), 2000);
