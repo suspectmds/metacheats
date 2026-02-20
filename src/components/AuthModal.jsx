@@ -137,9 +137,23 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
                             </div>
 
                             {error && (
-                                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center gap-3 text-red-500 text-xs font-bold animate-shake">
-                                    <X size={16} />
-                                    <span>{error}</span>
+                                <div className="space-y-2">
+                                    <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center gap-3 text-red-500 text-xs font-bold animate-shake">
+                                        <AlertTriangle size={18} className="shrink-0" />
+                                        <span>{error}</span>
+                                    </div>
+                                    <div className="bg-white/5 border border-white/5 p-3 rounded-lg flex flex-col gap-1 font-mono text-[9px] text-gray-500 uppercase tracking-tighter">
+                                        <div className="flex justify-between">
+                                            <span>Detected URL:</span>
+                                            <span className="text-white">{checkConfig().url}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Key Status:</span>
+                                            <span className={checkConfig().key === 'MISSING' ? 'text-red-500' : 'text-hacker-green'}>
+                                                {checkConfig().key}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
