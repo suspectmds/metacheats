@@ -37,6 +37,7 @@ const MetaCheats = () => {
   const [liveGames, setLiveGames] = useState([]);
   const [liveAccounts, setLiveAccounts] = useState([]);
   const [liveReviews, setLiveReviews] = useState([]);
+  const [syncStatus, setSyncStatus] = useState('Initializing...');
 
   // DYNAMIC REVIEW GROWTH ENGINE
   const launchDate = new Date('2026-02-01');
@@ -122,9 +123,13 @@ const MetaCheats = () => {
     // Fetch Products
     const fetchProducts = async () => {
       try {
+        setSyncStatus('Fetching Products...');
         const res = await fetch('/api/products');
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
         const data = await res.json();
+
         const allGroups = data.groups || [];
+        console.log("SellAuth Groups Found:", allGroups.length);
 
         // Distribute products into categories
         let gamesAggregator = [];
@@ -146,9 +151,17 @@ const MetaCheats = () => {
           }
         });
 
-        if (gamesAggregator.length > 0) setLiveGames(gamesAggregator);
+        if (gamesAggregator.length > 0) {
+          setLiveGames(gamesAggregator);
+          setSyncStatus('Live');
+        } else {
+          setSyncStatus('No Products found in Groups');
+        }
         if (accountsAggregator.length > 0) setLiveAccounts(accountsAggregator);
-      } catch (e) { }
+      } catch (e) {
+        console.error("Sync Error:", e.message);
+        setSyncStatus('Sync Failed - Check Vercel Env Vars');
+      }
     };
 
     // Fetch Reviews
@@ -644,7 +657,12 @@ const MetaCheats = () => {
       <section className="py-20 max-w-7xl mx-auto px-6">
         <div className="flex flex-col space-y-4 mb-12">
           <div className="h-1 w-12 bg-hacker-green" />
-          <h2 className="text-3xl font-black tracking-tight uppercase italic">Popular <span className="text-hacker-green font-normal not-italic">Products</span></h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-3xl font-black tracking-tight uppercase italic">Popular <span className="text-hacker-green font-normal not-italic">Products</span></h2>
+            <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${syncStatus === 'Live' ? 'bg-hacker-green/10 border-hacker-green text-hacker-green' : 'bg-red-500/10 border-red-500 text-red-500'}`}>
+              Sync: {syncStatus}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

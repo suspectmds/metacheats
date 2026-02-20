@@ -15,10 +15,15 @@ module.exports = async (req, res) => {
 
         // The API returns all groups, each containing a products array
         const groups = response.data.data || [];
+        console.log(`Fetch Successful: ${groups.length} groups found`);
 
         res.status(200).json({ groups });
     } catch (error) {
-        console.error('SellAuth API Error (Groups):', error.response?.data || error.message);
-        res.status(500).json({ error: "Failed to fetch products" });
+        console.error('SellAuth API Error:', error.response?.data || error.message);
+        res.status(500).json({
+            error: "Failed to fetch products",
+            details: error.response?.data?.message || error.message,
+            hint: "Check if SELLAUTH_API_KEY and SELLAUTH_SHOP_ID are correct in Vercel."
+        });
     }
 };
