@@ -34,6 +34,23 @@ const MetaCheats = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userBalance, setUserBalance] = useState(240.25);
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [liveGames, setLiveGames] = useState([]);
+  const [liveAccounts, setLiveAccounts] = useState([]);
+  const [liveReviews, setLiveReviews] = useState([]);
+
+  // OFFICIAL SELLAUTH GROUP MAPPING
+  const GROUP_IDS = {
+    R6: "60326",
+    SPOOFERS: "60327",
+    ACCOUNTS: "87896",
+    FORTNITE: "60329",
+    CS2: "74053",
+    EFT: "82832",
+    RUST: "83750",
+    APEX: "84914",
+    BATTLEFIELD: "85254",
+    OTHER: "86711"
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -48,13 +65,49 @@ const MetaCheats = () => {
     // Poll for balance updates from backend
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/balance/APEXE');
+        const res = await fetch('/api/balance?username=APEXE');
         const data = await res.json();
         setUserBalance(data.balance);
-      } catch (e) {
-        // Fallback or ignore if dev
-      }
-    }, 5000);
+      } catch (e) { }
+    }, 10000);
+
+    // Fetch Products
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch('/api/products');
+        const data = await res.json();
+        const allGroups = data.groups || [];
+
+        // Distribute products into categories
+        let gamesAggregator = [];
+        let accountsAggregator = [];
+
+        allGroups.forEach(group => {
+          const gid = group.id.toString();
+          if (gid === GROUP_IDS.ACCOUNTS) {
+            accountsAggregator = [...accountsAggregator, ...group.products];
+          } else if (Object.values(GROUP_IDS).includes(gid)) {
+            // All other game groups go into games
+            gamesAggregator = [...gamesAggregator, ...group.products];
+          }
+        });
+
+        if (gamesAggregator.length > 0) setLiveGames(gamesAggregator);
+        if (accountsAggregator.length > 0) setLiveAccounts(accountsAggregator);
+      } catch (e) { }
+    };
+
+    // Fetch Reviews
+    const fetchReviews = async () => {
+      try {
+        const res = await fetch('/api/reviews');
+        const data = await res.json();
+        setLiveReviews(data.reviews);
+      } catch (e) { }
+    };
+
+    fetchProducts();
+    fetchReviews();
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -94,19 +147,19 @@ const MetaCheats = () => {
   };
 
   const games = [
-    { name: "Apex Legends", status: "Undetected", since: "2 weeks", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
-    { name: "Counter-Strike 2", status: "Undetected", since: "1 month", image: "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=800&q=80" },
-    { name: "DayZ", status: "Updating", since: "1 day", image: "https://images.unsplash.com/photo-1552824236-077641c1d1fa?auto=format&fit=crop&w=800&q=80" },
-    { name: "Rust", status: "Undetected", since: "3 weeks", image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80" },
-    { name: "Fortnite", status: "Use at Risk", since: "3 days", image: "https://images.unsplash.com/photo-1589241062272-c0a000072dfa?auto=format&fit=crop&w=800&q=80" },
-    { name: "Call of Duty", status: "Undetected", since: "5 days", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" }
+    { name: "Apex Legends", status: "Undetected", since: "2 weeks", productId: "PROD_ID_APEX", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
+    { name: "Counter-Strike 2", status: "Undetected", since: "1 month", productId: "PROD_ID_CS2", image: "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=800&q=80" },
+    { name: "DayZ", status: "Updating", since: "1 day", productId: "PROD_ID_DAYZ", image: "https://images.unsplash.com/photo-1552824236-077641c1d1fa?auto=format&fit=crop&w=800&q=80" },
+    { name: "Rust", status: "Undetected", since: "3 weeks", productId: "PROD_ID_RUST", image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80" },
+    { name: "Fortnite", status: "Use at Risk", since: "3 days", productId: "PROD_ID_FORTNITE", image: "https://images.unsplash.com/photo-1589241062272-c0a000072dfa?auto=format&fit=crop&w=800&q=80" },
+    { name: "Call of Duty", status: "Undetected", since: "5 days", productId: "PROD_ID_COD", image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" }
   ];
 
   const accounts = [
-    { name: "Apex Masters Account", price: "$45.00", stock: "12", platform: "Steam", skins: "150+", level: "500", rank: "Masters" },
-    { name: "CS2 Prime Global", price: "$32.00", stock: "5", platform: "Steam", skins: "Knife + Gloves", level: "40", rank: "Global Elite" },
-    { name: "Valorant Ascendant", price: "$28.00", stock: "8", platform: "Riot", skins: "Vandal + Phantom", level: "65", rank: "Ascendant" },
-    { name: "Fortnite OG Account", price: "$120.00", stock: "2", platform: "Epic", skins: "Renegade Raider", level: "1200", rank: "N/A" }
+    { name: "Apex Masters Account", price: "$45.00", stock: "12", productId: "ACC_ID_APEX", platform: "Steam", skins: "150+", level: "500", rank: "Masters" },
+    { name: "CS2 Prime Global", price: "$32.00", stock: "5", productId: "ACC_ID_CS2", platform: "Steam", skins: "Knife + Gloves", level: "40", rank: "Global Elite" },
+    { name: "Valorant Ascendant", price: "$28.00", stock: "8", productId: "ACC_ID_VAL", platform: "Riot", skins: "Vandal + Phantom", level: "65", rank: "Ascendant" },
+    { name: "Fortnite OG Account", price: "$120.00", stock: "2", productId: "ACC_ID_FORTNITE", platform: "Epic", skins: "Renegade Raider", level: "1200", rank: "N/A" }
   ];
 
   const DepositModal = () => (
@@ -175,7 +228,7 @@ const MetaCheats = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {accounts.map((acc, i) => (
+        {(liveAccounts.length > 0 ? liveAccounts : accounts).map((acc, i) => (
           <motion.div
             key={i}
             whileHover={{ y: -5 }}
@@ -183,11 +236,11 @@ const MetaCheats = () => {
           >
             <div className="flex justify-between items-start mb-6">
               <div className="px-3 py-1 bg-hacker-green/10 text-hacker-green rounded text-[9px] font-black uppercase tracking-widest">
-                {acc.platform}
+                {acc.platform || "STEAM"}
               </div>
               <div className="text-right">
-                <div className="text-[9px] font-bold text-gray-600">IN STOCK</div>
-                <div className="text-xs font-black">{acc.stock}</div>
+                <div className="text-[9px] font-bold text-gray-600">STOCK</div>
+                <div className="text-xs font-black">{acc.stock || acc.stock_count || 0}</div>
               </div>
             </div>
 
@@ -196,22 +249,22 @@ const MetaCheats = () => {
             <div className="space-y-3 mb-8">
               <div className="flex justify-between text-[10px]">
                 <span className="text-gray-500 uppercase font-bold">Rank</span>
-                <span className="text-hacker-green font-black">{acc.rank}</span>
+                <span className="text-hacker-green font-black">{acc.rank || "N/A"}</span>
               </div>
               <div className="flex justify-between text-[10px]">
-                <span className="text-gray-500 uppercase font-bold">Skins</span>
-                <span className="text-white font-black">{acc.skins}</span>
+                <span className="text-gray-500 uppercase font-bold">Attributes</span>
+                <span className="text-white font-black">{acc.skins || "Instant Delivery"}</span>
               </div>
               <div className="flex justify-between text-[10px]">
-                <span className="text-gray-500 uppercase font-bold">Level</span>
-                <span className="text-white font-black">{acc.level}</span>
+                <span className="text-gray-500 uppercase font-bold">Platform</span>
+                <span className="text-white font-black">{acc.platform || "PC"}</span>
               </div>
             </div>
 
             <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-              <div className="text-2xl font-black italic">{acc.price}</div>
+              <div className="text-2xl font-black italic">${acc.price || acc.unit_price || "0.00"}</div>
               <button
-                onClick={() => handlePurchase(acc.name.toLowerCase().replace(/ /g, '-'))}
+                onClick={() => handlePurchase(acc.productId || acc.id)}
                 className="px-4 py-2 bg-hacker-green text-black font-black text-[10px] rounded uppercase hover:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all"
               >
                 Buy Now
@@ -412,11 +465,11 @@ const MetaCheats = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {[
+        {(liveReviews.length > 0 ? liveReviews : [
           { user: "ShadowReaper", rank: "VIP", text: "Best apex external I have ever used. Performance is insane and support team is actually helpful.", date: "2 days ago", rating: 5 },
           { user: "KernelMaster", rank: "Premium", text: "Day 90 of using Kernaim and still undetected. The prediction logic is ahead of everything else on the market.", date: "1 week ago", rating: 5 },
           { user: "SilentAimer", rank: "Member", text: "Setup was a bit tricky but the staff helped me through discord in less than 5 minutes. 10/10 service.", date: "3 days ago", rating: 5 }
-        ].map((rev, i) => (
+        ]).map((rev, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
@@ -438,7 +491,7 @@ const MetaCheats = () => {
                 {[...Array(rev.rating)].map((_, i) => <Star key={i} size={10} fill="currentColor" />)}
               </div>
             </div>
-            <p className="text-gray-400 text-sm italic italic leading-relaxed">"{rev.text}"</p>
+            <p className="text-gray-400 text-sm italic leading-relaxed">"{rev.text || rev.comment}"</p>
             <div className="mt-6 pt-6 border-t border-white/5 text-[9px] font-bold text-gray-600 uppercase tracking-widest">
               POSTED {rev.date}
             </div>
@@ -520,21 +573,22 @@ const MetaCheats = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {games.map((game, i) => (
+          {(liveGames.length > 0 ? liveGames : games).map((game, i) => (
             <motion.div
               key={i}
               whileHover={{ y: -5 }}
+              onClick={() => handlePurchase(game.productId || game.id)}
               className="group relative bg-[#0d0d0d] rounded-xl overflow-hidden border border-white/5 hover:border-hacker-green/50 transition-all cursor-pointer"
             >
               <div className="aspect-[16/10] relative">
-                <img src={game.image} className="w-full h-full object-cover grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" alt={game.name} />
+                <img src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" alt={game.name} />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent" />
 
                 {/* Status Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center translate-y-4">
                   <div className="text-center">
                     <div className="text-xs font-black tracking-[0.2em] text-white/50 group-hover:text-white transition-colors">{game.name.toUpperCase()}</div>
-                    <div className={`text-2xl font-black italic mt-1 ${game.status === 'Undetected' ? 'text-hacker-green' : 'text-red-500'}`}>HACKS</div>
+                    <div className={`text-2xl font-black italic mt-1 ${game.status === 'Updating' ? 'text-yellow-500' : 'text-hacker-green'}`}>{game.status === 'Updating' ? 'UPDATING' : 'HACKS'}</div>
                   </div>
                 </div>
 
@@ -568,9 +622,9 @@ const MetaCheats = () => {
             <h3 className="text-sm font-black text-white/40 uppercase tracking-[0.3em] mb-6">APEX LEGENDS CHEATS</h3>
             <div className="space-y-2">
               {[
-                { name: "REDEYE EXTERNAL", desc: "RedEye External delivers unparalleled movement mastery with auto-tap strafe, giving you a competitive edge.", status: "UPDATING" },
-                { name: "KERNAIM", desc: "Elite internal tool with perfect predictive aim and advanced visuals.", status: "UNDETECTED" },
-                { name: "EDEN", desc: "Maximum security external build for professional league play.", status: "UNDETECTED" }
+                { name: "REDEYE EXTERNAL", desc: "RedEye External delivers unparalleled movement mastery with auto-tap strafe, giving you a competitive edge.", status: "UPDATING", productId: "REDEYE_PROD_ID" },
+                { name: "KERNAIM", desc: "Elite internal tool with perfect predictive aim and advanced visuals.", status: "UNDETECTED", productId: "KERNAIM_PROD_ID" },
+                { name: "EDEN", desc: "Maximum security external build for professional league play.", status: "UNDETECTED", productId: "EDEN_PROD_ID" }
               ].map(tool => (
                 <div key={tool.name} className="glass p-6 rounded-xl flex items-center justify-between group hover:border-hacker-green/30 transition-all">
                   <div className="flex-1">
@@ -587,7 +641,7 @@ const MetaCheats = () => {
                       {tool.status} (WORKING)
                     </div>
                     <button
-                      onClick={() => handlePurchase(tool.name.toLowerCase().replace(/ /g, '-'))}
+                      onClick={() => handlePurchase(tool.productId)}
                       className="px-6 py-2 bg-hacker-green text-black font-black text-xs rounded hover:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all uppercase"
                     >
                       Purchase Now
