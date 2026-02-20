@@ -197,9 +197,14 @@ const MetaCheats = () => {
       return;
     }
 
-    // Fallback: If no real ID yet, redirect to main store
+    // Fallback: If no real ID yet, stay on site and notify
     if (!productId || productId.toString().includes('PROD_ID') || productId.toString().includes('ACC_ID')) {
-      window.open(SELLAUTH_STORE_URL, '_blank');
+      // Create a non-intrusive notification or just stay on site
+      const notify = document.createElement('div');
+      notify.className = "fixed bottom-10 left-1/2 -translate-x-1/2 glass border-hacker-green/50 border px-6 py-4 rounded-xl z-[9999] text-white font-black uppercase text-xs animate-bounce shadow-[0_0_30px_rgba(0,255,0,0.2)]";
+      notify.innerText = "Product Synchronizing... Please wait a few moments";
+      document.body.appendChild(notify);
+      setTimeout(() => notify.remove(), 4000);
       return;
     }
 
