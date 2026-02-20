@@ -567,7 +567,7 @@ const MetaCheats = () => {
           <div className="absolute top-0 right-0 w-2/3 h-full matrix-bg opacity-40 translate-x-12">
             <img
               src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80"
-              className="w-full h-full object-cover grayscale brightness-[0.3] mix-blend-screen"
+              className="w-full h-full object-cover brightness-[0.6] mix-blend-screen"
               alt="Character Render"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
@@ -639,7 +639,7 @@ const MetaCheats = () => {
               className="group relative bg-[#0d0d0d] rounded-xl overflow-hidden border border-white/5 hover:border-hacker-green/50 transition-all cursor-pointer"
             >
               <div className="aspect-[16/10] relative">
-                <img src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" alt={game.name} />
+                <img src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all duration-700" alt={game.name} />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent" />
 
                 {/* Status Overlay */}
