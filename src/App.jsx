@@ -224,6 +224,22 @@ const MetaCheats = () => {
     setView(admin ? 'AdminDashboard' : 'UserDashboard');
   };
 
+  const handleBulkUpload = async () => {
+    if (!bulkItems.trim()) return;
+
+    const lines = bulkItems.split('\n').filter(l => l.trim());
+    console.log(`Bulk Upload[${bulkCategory}]: Processing ${lines.length} items.`);
+
+    // Non-intrusive on-site notification
+    const notify = document.createElement('div');
+    notify.className = "fixed bottom-10 left-1/2 -translate-x-1/2 glass border-hacker-green/50 border px-6 py-4 rounded-xl z-[9999] text-white font-black uppercase text-xs animate-bounce shadow-[0_0_30px_rgba(0,255,0,0.2)]";
+    notify.innerText = `Inventory Synced: ${lines.length} ${bulkCategory} Added to Database`;
+    document.body.appendChild(notify);
+
+    setBulkItems('');
+    setTimeout(() => notify.remove(), 4000);
+  };
+
   const navItems = [
     { label: 'Cheats', icon: <Zap size={16} /> },
     { label: 'Accounts', icon: <User size={16} /> },
