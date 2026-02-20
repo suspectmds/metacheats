@@ -995,15 +995,19 @@ const MetaCheats = () => {
               <div className="h-4 w-px bg-white/10" />
               {!isLoggedIn ? (
                 <>
-                  <button onClick={() => handleLogin(false)} className="px-4 py-1.5 bg-white text-black hover:bg-gray-200 rounded text-[10px] font-black uppercase transition-all">Login</button>
-                  <button onClick={() => handleLogin(true)} className="px-4 py-1.5 bg-[#5865F2] hover:bg-[#4752c4] rounded text-[10px] font-black uppercase transition-all">Register</button>
+                  <button onClick={() => setShowAuthModal(true)} className="px-4 py-1.5 bg-white text-black hover:bg-gray-200 rounded text-[10px] font-black uppercase transition-all">Login</button>
+                  <button onClick={() => setShowAuthModal(true)} className="px-4 py-1.5 bg-[#5865F2] hover:bg-[#4752c4] rounded text-[10px] font-black uppercase transition-all">Register</button>
                 </>
               ) : (
                 <div className="flex items-center gap-6">
-                  <button onClick={() => setView(isAdmin ? 'AdminDashboard' : 'UserDashboard')} className="text-[10px] font-black uppercase text-hacker-green flex items-center gap-2">
+                  <div className="flex flex-col items-right text-right">
+                    <div className="text-[10px] font-black text-hacker-green uppercase tracking-widest">{user?.email?.split('@')[0]}</div>
+                    <div className="text-[8px] font-bold text-gray-500 uppercase tracking-tighter">Verified Operator</div>
+                  </div>
+                  <button onClick={() => setView(user?.email === 'admin@metacheat.org' ? 'AdminDashboard' : 'UserDashboard')} className="text-[10px] font-black uppercase text-hacker-green flex items-center gap-2">
                     <User size={14} /> My Account
                   </button>
-                  <button onClick={() => setIsLoggedIn(false)} className="text-red-500 hover:text-red-400 transition-colors">
+                  <button onClick={handleLogout} className="text-red-500 hover:text-red-400 transition-colors">
                     <LogOut size={16} />
                   </button>
                 </div>
