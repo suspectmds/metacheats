@@ -42,6 +42,8 @@ const MetaCheats = () => {
   const [syncStatus, setSyncStatus] = useState('Initializing...');
   const [user, setUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [bulkItems, setBulkItems] = useState('');
+  const [bulkCategory, setBulkCategory] = useState('Keys');
 
   // DYNAMIC REVIEW GROWTH ENGINE
   const launchDate = new Date('2026-02-01');
@@ -921,44 +923,56 @@ const MetaCheats = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+        {/* Bulk Upload Section */}
+        <div className="glass p-8 rounded-2xl border border-hacker-green/20">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="font-black uppercase italic flex items-center gap-3">
+              <Plus className="text-hacker-green" /> Bulk Inventory Inbound
+            </h3>
+            <div className="flex gap-2">
+              {['Keys', 'Accounts'].map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setBulkCategory(cat)}
+                  className={`px-3 py-1 rounded text-[8px] font-black uppercase tracking-wider transition-all ${bulkCategory === cat ? 'bg-hacker-green text-black' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Paste items (one per line):</p>
+            <textarea
+              value={bulkItems}
+              onChange={(e) => setBulkItems(e.target.value)}
+              placeholder={bulkCategory === 'Keys' ? 'MC-XXXX-XXXX-XXXX\nMC-YYYY-YYYY-YYYY' : 'user:pass:email\nuser2:pass2:email2'}
+              className="w-full h-48 bg-black/40 border border-white/10 rounded-xl p-4 text-xs font-mono text-hacker-green focus:outline-none focus:border-hacker-green/50 transition-all"
+            />
+            <button
+              onClick={handleBulkUpload}
+              className="w-full py-4 bg-hacker-green text-black font-black uppercase text-xs rounded-xl shadow-[0_0_20px_rgba(0,255,0,0.2)] hover:shadow-[0_0_30px_rgba(0,255,0,0.4)] transition-all flex items-center justify-center gap-2 group"
+            >
+              <Database size={16} /> Finalize Inbound {bulkCategory}
+            </button>
+          </div>
+        </div>
+
         <div className="glass p-8 rounded-2xl">
           <h3 className="font-black uppercase italic mb-8">System Traffic</h3>
           <div className="space-y-4 font-mono text-[10px]">
             {[
               "12:44 > ROOT_AUTH[SUCCESS] IP: 45.12.11.22",
-              "12:42 > SELLAUTH_WEBHOOK[POINT_GRANT] USER: SHADOW AMOUNT: 50.00",
-              "12:40 > HWID_RESET[PENDING] KEY: MC-928X...",
-              "12:38 > NEW_PRODUCT_UPLOAD: 'MetaCleaner v2.1'"
+              "12:42 > DB_INVENTORY[SUCCESS] +15 APEX_KEYS",
+              "12:40 > HWID_RESET[PENDING] ID: #8821",
+              "12:38 > NEW_OPERATOR_REGISTERED: 'ShadowX'"
             ].map((log, i) => (
               <div key={i} className="flex gap-4 text-hacker-green/80 p-2 hover:bg-white/5 rounded transition-all">
                 <span className="text-white opacity-20">{">"}</span>
                 <span>{log}</span>
               </div>
             ))}
-          </div>
-        </div>
-        <div className="glass p-8 rounded-2xl">
-          <h3 className="font-black uppercase italic mb-8">Management Controls</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setUserBalance(prev => prev + 50)}
-              className="p-6 glass border border-hacker-green/30 text-hacker-green rounded-xl flex flex-col items-center gap-4 hover:bg-hacker-green hover:text-black transition-all group"
-            >
-              <Zap size={24} />
-              <span className="text-[10px] font-black uppercase">Grant $50</span>
-            </button>
-            <button className="p-6 glass border border-white/10 rounded-xl flex flex-col items-center gap-4 hover:border-hacker-green transition-all">
-              <User size={24} />
-              <span className="text-[10px] font-black uppercase">User List</span>
-            </button>
-            <button className="p-6 glass border border-white/10 rounded-xl flex flex-col items-center gap-4 hover:border-hacker-green transition-all">
-              <Database size={24} />
-              <span className="text-[10px] font-black uppercase">SellAuth Sync</span>
-            </button>
-            <button className="p-6 glass border border-white/10 rounded-xl flex flex-col items-center gap-4 hover:border-hacker-green transition-all">
-              <Settings size={24} />
-              <span className="text-[10px] font-black uppercase">System config</span>
-            </button>
           </div>
         </div>
       </div>
