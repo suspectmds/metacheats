@@ -28,7 +28,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './lib/supabase';
 import AuthModal from './components/AuthModal';
-import CheckoutModal from './components/CheckoutModal';
+// Real SellAuth Embed will be used instead of local CheckoutModal
 
 const MetaCheats = () => {
   const [view, setView] = useState('Home');
@@ -45,9 +45,8 @@ const MetaCheats = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [bulkItems, setBulkItems] = useState('');
   const [bulkCategory, setBulkCategory] = useState('Keys');
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [squareCreds, setSquareCreds] = useState({ appId: '', locationId: '' });
+  const [alphabetFilter, setAlphabetFilter] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState(null);
 
   // DYNAMIC REVIEW GROWTH ENGINE
   const launchDate = new Date('2026-02-01');
@@ -170,12 +169,14 @@ const MetaCheats = () => {
             ...p,
             isLive: true,
             status: p.stock > 0 ? "Undetected" : "Out of Stock",
-            image: p.image || p.thumbnail_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"
+            image: p.image || p.thumbnail_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80",
+            groupId: gid,
+            groupName: group.name
           }));
 
           if (gid === GROUP_IDS.ACCOUNTS) {
             accountsAggregator = [...accountsAggregator, ...productsWithMetas];
-          } else if (Object.values(GROUP_IDS).includes(gid)) {
+          } else {
             gamesAggregator = [...gamesAggregator, ...productsWithMetas];
           }
         });
@@ -256,16 +257,15 @@ const MetaCheats = () => {
   const SELLAUTH_STORE_URL = "https://metacheat.mysellauth.com"; // Official SellAuth Link
 
   const handlePurchase = (productId, productPath) => {
-    // REQUIRE LOGIN FOR PURCHASE
-    if (!isLoggedIn) {
-      setShowAuthModal(true);
-      return;
+    if (window.SellAuth) {
+      window.SellAuth.checkout(productId, {
+        shopId: "169969"
+      });
+    } else {
+      // Fallback: Redirect to product page if embed fails to load
+      const path = productPath || productId;
+      window.open(`${SELLAUTH_STORE_URL}/product/${path}`, '_blank');
     }
-
-    // Trigger Custom Checkout Handshake
-    const product = [...liveGames, ...liveAccounts].find(p => p.id === productId);
-    setSelectedProduct(product || { name: 'MetaCheats Software', price: '19.99' });
-    setShowCheckoutModal(true);
   };
 
   const handleDeposit = (method) => {
@@ -676,18 +676,29 @@ const MetaCheats = () => {
         </div>
       </section>
 
-      {/* Product Sorting Bar (Integrated into next section) */}
+      {/* Product Sorting Bar */}
       <section className="bg-hacker-gray/30 border-y border-white/5 py-3 sticky top-[138px] z-30 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button className="px-5 py-2 rounded bg-hacker-green text-black text-xs font-black uppercase shadow-[0_0_10px_rgba(0,255,0,0.3)]">All Products</button>
+            <button
+              onClick={() => { setAlphabetFilter(''); setSelectedGroup(null); }}
+              className={`px-5 py-2 rounded text-xs font-black uppercase transition-all ${!alphabetFilter && !selectedGroup ? 'bg-hacker-green text-black shadow-[0_0_10px_rgba(0,255,0,0.3)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+            >
+              All Products
+            </button>
             {['A', 'B', 'C', 'D', 'E', 'F', 'H', 'M', 'Q', 'P', 'R', 'S', 'T', 'U', 'V', 'W'].map(l => (
-              <button key={l} className="w-8 h-8 rounded hover:bg-white/5 text-gray-500 hover:text-white transition-all text-xs font-bold">{l}</button>
+              <button
+                key={l}
+                onClick={() => { setAlphabetFilter(l); setSelectedGroup(null); }}
+                className={`w-8 h-8 rounded transition-all text-xs font-bold ${alphabetFilter === l ? 'bg-hacker-green text-black shadow-[0_0_8px_rgba(0,255,0,0.3)]' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+              >
+                {l}
+              </button>
             ))}
           </div>
           <div className="flex items-center space-x-2 text-hacker-green text-xs font-black uppercase">
             <Monitor size={14} />
-            <span>40 Games Supported</span>
+            <span>{liveGames.length + liveAccounts.length} Products Synced</span>
           </div>
         </div>
       </section>
@@ -705,38 +716,44 @@ const MetaCheats = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {(liveGames.length > 0 ? liveGames : games).map((game, i) => (
-            <motion.div
-              key={i}
-              whileHover={{ y: -5 }}
-              onClick={() => handlePurchase(game.id, game.path)}
-              className="group relative bg-[#0d0d0d] rounded-xl overflow-hidden border border-white/5 hover:border-hacker-green/50 transition-all cursor-pointer"
-            >
-              <div className="aspect-[16/10] relative">
-                <img src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" alt={game.name} />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity" />
+          {(liveGames.length > 0 ? liveGames : games)
+            .filter(g => {
+              if (selectedGroup) return g.groupId === selectedGroup;
+              if (alphabetFilter) return g.name.toUpperCase().startsWith(alphabetFilter);
+              return true;
+            })
+            .map((game, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ y: -5 }}
+                onClick={() => handlePurchase(game.id, game.path)}
+                className="group relative bg-[#0d0d0d] rounded-xl overflow-hidden border border-white/5 hover:border-hacker-green/50 transition-all cursor-pointer"
+              >
+                <div className="aspect-[16/10] relative">
+                  <img src={game.image || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700" alt={game.name} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity" />
 
-                {/* Status Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center translate-y-4">
-                  <div className="text-center">
-                    <div className="text-xs font-black tracking-[0.2em] text-white/50 group-hover:text-white transition-colors">{game.name.toUpperCase()}</div>
-                    <div className={`text-2xl font-black italic mt-1 ${game.status === 'Updating' ? 'text-yellow-500' : 'text-hacker-green'}`}>{game.status === 'Updating' ? 'UPDATING' : 'HACKS'}</div>
+                  {/* Status Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center translate-y-4">
+                    <div className="text-center">
+                      <div className="text-xs font-black tracking-[0.2em] text-white/50 group-hover:text-white transition-colors">{(game.groupName || game.name).toUpperCase()}</div>
+                      <div className={`text-2xl font-black italic mt-1 ${game.status === 'Updating' ? 'text-yellow-500' : 'text-hacker-green'}`}>{game.status === 'Updating' ? 'UPDATING' : 'HACKS'}</div>
+                    </div>
+                  </div>
+
+                  <div className="absolute bottom-4 left-4 flex gap-2">
+                    <span className="px-3 py-1 bg-black/80 rounded border border-white/10 text-[10px] font-black uppercase tracking-widest text-hacker-green">
+                      {game.name}
+                    </span>
+                    {game.isLive && (
+                      <span className="px-2 py-1 bg-hacker-green/20 rounded border border-hacker-green/30 text-[8px] font-black uppercase text-hacker-green">
+                        Live
+                      </span>
+                    )}
                   </div>
                 </div>
-
-                <div className="absolute bottom-4 left-4 flex gap-2">
-                  <span className="px-3 py-1 bg-black/80 rounded border border-white/10 text-[10px] font-black uppercase tracking-widest text-hacker-green">
-                    {game.name}
-                  </span>
-                  {game.isLive && (
-                    <span className="px-2 py-1 bg-hacker-green/20 rounded border border-hacker-green/30 text-[8px] font-black uppercase text-hacker-green">
-                      Live
-                    </span>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))}
         </div>
       </section>
 
@@ -1158,11 +1175,6 @@ const MetaCheats = () => {
           setUser(u);
           setIsLoggedIn(true);
         }}
-      />
-      <CheckoutModal
-        isOpen={showCheckoutModal}
-        onClose={() => setShowCheckoutModal(false)}
-        product={selectedProduct}
       />
     </div>
   );
