@@ -28,6 +28,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './lib/supabase';
 import AuthModal from './components/AuthModal';
+import CheckoutModal from './components/CheckoutModal';
 
 const MetaCheats = () => {
   const [view, setView] = useState('Home');
@@ -44,6 +45,8 @@ const MetaCheats = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [bulkItems, setBulkItems] = useState('');
   const [bulkCategory, setBulkCategory] = useState('Keys');
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // DYNAMIC REVIEW GROWTH ENGINE
   const launchDate = new Date('2026-02-01');
@@ -1135,6 +1138,11 @@ const MetaCheats = () => {
           setUser(u);
           setIsLoggedIn(true);
         }}
+      />
+      <CheckoutModal
+        isOpen={showCheckoutModal}
+        onClose={() => setShowCheckoutModal(false)}
+        product={selectedProduct}
       />
     </div>
   );
