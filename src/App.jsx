@@ -132,11 +132,17 @@ const MetaCheats = () => {
 
         allGroups.forEach(group => {
           const gid = group.id.toString();
+          const productsWithMetas = (group.products || []).map(p => ({
+            ...p,
+            isLive: true,
+            status: p.stock > 0 ? "Undetected" : "Out of Stock",
+            image: p.image || p.thumbnail_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"
+          }));
+
           if (gid === GROUP_IDS.ACCOUNTS) {
-            accountsAggregator = [...accountsAggregator, ...group.products];
+            accountsAggregator = [...accountsAggregator, ...productsWithMetas];
           } else if (Object.values(GROUP_IDS).includes(gid)) {
-            // All other game groups go into games
-            gamesAggregator = [...gamesAggregator, ...group.products];
+            gamesAggregator = [...gamesAggregator, ...productsWithMetas];
           }
         });
 
@@ -184,9 +190,15 @@ const MetaCheats = () => {
 
   const SELLAUTH_STORE_URL = "https://metacheat.mysellauth.com"; // Official SellAuth Link
 
-  const handlePurchase = (productId) => {
-    // If no real ID yet, redirect to main store
-    if (!productId || productId.includes('PROD_ID') || productId.includes('ACC_ID')) {
+  const handlePurchase = (productId, productPath) => {
+    // If we have a path (provided by SellAuth API), use it directly
+    if (productPath) {
+      window.open(`${SELLAUTH_STORE_URL}/product/${productPath}`, '_blank');
+      return;
+    }
+
+    // Fallback: If no real ID yet, redirect to main store
+    if (!productId || productId.toString().includes('PROD_ID') || productId.toString().includes('ACC_ID')) {
       window.open(SELLAUTH_STORE_URL, '_blank');
       return;
     }
@@ -322,7 +334,7 @@ const MetaCheats = () => {
             <div className="pt-6 border-t border-white/5 flex items-center justify-between">
               <div className="text-2xl font-black italic">${acc.price || acc.unit_price || "0.00"}</div>
               <button
-                onClick={() => handlePurchase(acc.productId || acc.id)}
+                onClick={() => handlePurchase(acc.id, acc.path)}
                 className="px-4 py-2 bg-hacker-green text-black font-black text-[10px] rounded uppercase hover:shadow-[0_0_15px_rgba(0,255,0,0.5)] transition-all"
               >
                 Buy Now
@@ -635,7 +647,7 @@ const MetaCheats = () => {
             <motion.div
               key={i}
               whileHover={{ y: -5 }}
-              onClick={() => handlePurchase(game.productId || game.id)}
+              onClick={() => handlePurchase(game.id, game.path)}
               className="group relative bg-[#0d0d0d] rounded-xl overflow-hidden border border-white/5 hover:border-hacker-green/50 transition-all cursor-pointer"
             >
               <div className="aspect-[16/10] relative">
@@ -650,10 +662,15 @@ const MetaCheats = () => {
                   </div>
                 </div>
 
-                <div className="absolute bottom-4 left-4">
+                <div className="absolute bottom-4 left-4 flex gap-2">
                   <span className="px-3 py-1 bg-black/80 rounded border border-white/10 text-[10px] font-black uppercase tracking-widest text-hacker-green">
                     {game.name}
                   </span>
+                  {game.isLive && (
+                    <span className="px-2 py-1 bg-hacker-green/20 rounded border border-hacker-green/30 text-[8px] font-black uppercase text-hacker-green">
+                      Live
+                    </span>
+                  )}
                 </div>
               </div>
             </motion.div>
