@@ -3,6 +3,8 @@ import bodyParser from 'body-parser';
 import crypto from 'crypto';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 dotenv.config();
 
 const app = express();
@@ -16,39 +18,76 @@ const SELLAUTH_API_KEY = process.env.SELLAUTH_API_KEY;
 const SHOP_ID_CONFIG = process.env.SELLAUTH_SHOP_ID;
 const SHOP_IDS = (SHOP_ID_CONFIG || '').split(',').map(id => id.trim()).filter(id => id);
 
+// Persistent File Cache Configuration
+const CACHE_FILE = path.join(process.cwd(), '.sellauth_cache.json');
+const CACHE_DURATION = 3600000; // 1 Hour - CRITICAL: Respecting SellAuth Rate Limits
+
+const getCachedData = () => {
+    try {
+        if (fs.existsSync(CACHE_FILE)) {
+            const content = fs.readFileSync(CACHE_FILE, 'utf-8');
+            return JSON.parse(content);
+        }
+    } catch (e) { console.error('Cache Read Error:', e.message); }
+    return null;
+};
+
+const setCachedData = (data) => {
+    try {
+        fs.writeFileSync(CACHE_FILE, JSON.stringify({ data, timestamp: Date.now() }), 'utf-8');
+    } catch (e) { console.error('Cache Write Error:', e.message); }
+};
+
 // Balance Check Endpoint
 app.get('/api/balance', (req, res) => {
     res.json({ balance: 240.25 });
 });
 
-// In-memory cache
-let groupsCache = { data: null, timestamp: 0 };
-const CACHE_DURATION = 60000; // 1 minute
-
 // Products Proxy
 app.get('/api/products', async (req, res) => {
     try {
+        const cached = getCachedData();
         const now = Date.now();
-        if (groupsCache.data && (now - groupsCache.timestamp < CACHE_DURATION)) {
-            return res.json({ groups: groupsCache.data });
+
+        // If cache exists and is fresh (within 1 hour), return it immediately
+        if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+            return res.json({ groups: cached.data });
         }
 
         let allGroups = [];
         for (const shopId of SHOP_IDS) {
-            const resp = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
-                headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` }
-            });
-            allGroups = [...allGroups, ...(resp.data.data || [])];
+            try {
+                const resp = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
+                    headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
+                    timeout: 5000 // Short timeout to avoid hanging
+                });
+                allGroups = [...allGroups, ...(resp.data.data || [])];
+            } catch (innerError) {
+                if (innerError.response?.status === 429) {
+                    console.error(`SellAuth RATE LIMIT (429) on Shop ${shopId}. Backing off.`);
+                    // Throw to outer catch to return stale data
+                    throw innerError;
+                }
+                console.error(`Error fetching Shop ${shopId}:`, innerError.message);
+            }
         }
 
-        // Update Cache
-        groupsCache = { data: allGroups, timestamp: now };
+        // Success: Update Cache
+        if (allGroups.length > 0) {
+            setCachedData(allGroups);
+        }
         res.json({ groups: allGroups });
     } catch (error) {
         console.error('SellAuth Local Proxy Error:', error.message);
-        // If fetch fails, return cached data if available, even if expired
-        if (groupsCache.data) return res.json({ groups: groupsCache.data });
-        res.status(500).json({ error: "Failed to fetch products" });
+
+        // On ANY failure (especially 429), return cached data if available (even if very old)
+        const cached = getCachedData();
+        if (cached && cached.data) {
+            console.log('EMERGENCY: Serving from stale cache to avoid further API load.');
+            return res.json({ groups: cached.data, isStale: true });
+        }
+
+        res.status(429).json({ error: "Too many requests. Please wait 5 minutes.", type: "rate_limit" });
     }
 });
 
