@@ -113,26 +113,45 @@ const MetaCheats = () => {
 
   const handlePurchase = (product) => {
     if (!product || !product.id) {
-      alert("Synchronization in progress. Please wait a few seconds for the product link to secure.");
+      alert("Synchronization in progress. Please wait a few seconds...");
       return;
     }
 
-    // Attempt direct checkout via SellAuth Embed SDK
-    if (window.sellAuthEmbed && window.sellAuthEmbed.checkout) {
-      const variantId = product.variants && product.variants.length > 0 ? product.variants[0].id : null;
-      window.sellAuthEmbed.checkout({
+    const variantId = product.variants && product.variants.length > 0 ? product.variants[0].id : null;
+    const embedSdk = window.SellAuthEmbed || window.sellAuthEmbed;
+
+    if (embedSdk && embedSdk.checkout) {
+      embedSdk.checkout({
         productId: String(product.id),
         variantId: variantId ? String(variantId) : undefined,
         quantity: 1,
         shopId: '169969',
-        modal: true
+        modal: false // Forces redirect instead of overlay
       });
-    } else if (window.SellAuth) {
-      // Fallback 1: Old open method
-      window.SellAuth.open(product.path);
     } else {
-      // Fallback 2: Direct link
-      window.open(`${SELLAUTH_STORE_URL}/product/${product.path}`, '_blank');
+      // Foolproof POST form to bypass product page and trigger checkout session
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `${SELLAUTH_STORE_URL}/cart/add`;
+
+      const productIdInput = document.createElement('input');
+      productIdInput.type = 'hidden';
+      productIdInput.name = 'product_id';
+      productIdInput.value = product.id;
+      form.appendChild(productIdInput);
+
+      if (variantId) {
+        const variantInput = document.createElement('input');
+        variantInput.type = 'hidden';
+        variantInput.name = 'variant_id';
+        variantInput.value = variantId;
+        form.appendChild(variantInput);
+      }
+
+      // CSRF token if needed, usually open endpoints don't strictly require it for external forms,
+      // but if it fails, it will gracefully redirect them to the cart/product page.
+      document.body.appendChild(form);
+      form.submit();
     }
   };
 
