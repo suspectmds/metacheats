@@ -425,42 +425,220 @@ const MetaCheats = () => {
     </div>
   );
 
-  const ForumView = () => (
-    <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
-      <div className="flex items-center justify-between mb-16">
-        <div>
-          <h2 className="text-5xl font-black italic text-white uppercase tracking-tighter">COMMUNITY <span className="text-hacker-green">FORUMS</span></h2>
-          <p className="text-white/40 mt-2">Connect with elite users, share configs, and read announcements.</p>
-        </div>
-        <button className="px-6 py-3 bg-white/10 text-white hover:bg-hacker-green hover:text-black transition-all rounded-full text-[10px] font-black uppercase tracking-widest pointer-events-auto">New Thread</button>
-      </div>
+  const ForumView = () => {
+    const [fView, setFView] = useState('categories'); // 'categories', 'threads', 'post'
+    const [activeCat, setActiveCat] = useState(null);
+    const [activeThread, setActiveThread] = useState(null);
+    const [showThreadForm, setShowThreadForm] = useState(false);
 
-      <div className="space-y-8 pointer-events-auto">
-        {[
-          { icon: <Shield size={24} />, title: 'Official Announcements', desc: 'Updates directly from the MetaCheats administration.', posts: 142, color: 'text-hacker-green' },
-          { icon: <RefreshCw size={24} />, title: 'Release Notes', desc: 'Detailed patch notes for all module updates.', posts: 89, color: 'text-blue-400' },
-          { icon: <UploadCloud size={24} />, title: 'User Configs (Verified)', desc: 'Share and download HvH / Legit configs.', posts: 3402, color: 'text-purple-400' },
-          { icon: <Package size={24} />, title: 'General Discussion', desc: 'Talk about anything gaming related.', posts: 8911, color: 'text-white/60' }
-        ].map((forum, i) => (
-          <div key={i} className="bg-white/5 border border-white/10 rounded-[30px] p-8 flex items-center justify-between hover:bg-white/10 transition-all cursor-pointer group">
-            <div className="flex items-center space-x-6">
-              <div className={`w-16 h-16 rounded-2xl bg-black/50 border border-white/5 flex items-center justify-center ${forum.color} group-hover:scale-110 transition-transform`}>
-                {forum.icon}
-              </div>
-              <div>
-                <h3 className="text-xl font-black uppercase text-white tracking-wide mb-1 flex items-center gap-3">{forum.title} <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-white/50">Category</span></h3>
-                <p className="text-sm text-white/40">{forum.desc}</p>
-              </div>
-            </div>
-            <div className="text-right hidden md:block">
-              <div className="text-2xl font-black text-white">{forum.posts.toLocaleString()}</div>
-              <div className="text-[9px] uppercase tracking-widest text-white/30">Total Posts</div>
+    const [categories] = useState([
+      { id: 'announcements', icon: <Shield size={24} />, title: 'Official Announcements', desc: 'Updates directly from the MetaCheats administration.', color: 'text-hacker-green' },
+      { id: 'releases', icon: <RefreshCw size={24} />, title: 'Release Notes', desc: 'Detailed patch notes for all module updates.', color: 'text-blue-400' },
+      { id: 'configs', icon: <UploadCloud size={24} />, title: 'User Configs (Verified)', desc: 'Share and download HvH / Legit configs.', color: 'text-purple-400' },
+      { id: 'general', icon: <Package size={24} />, title: 'General Discussion', desc: 'Talk about anything gaming related.', color: 'text-white/60' }
+    ]);
+
+    const [threads, setThreads] = useState([
+      { id: 1, categoryId: 'announcements', title: 'Welcome to the New MetaCheats Platform', author: 'Admin', date: 'Oct 12, 2024', replies: [], views: 1402, content: 'Welcome everyone! We have completely revamped our backend infrastructure to provide lightning-fast authentication and instant deliveries.' },
+      { id: 2, categoryId: 'configs', title: 'R6 Legit Config - Champion Rank Updates', author: 'EliteUser99', date: 'Nov 02, 2024', replies: [{ author: 'PlayerOne', date: 'Nov 03, 2024', content: 'Works perfectly, hit diamond today.' }], views: 892, content: 'Attached is my config for the latest patch. Smoothing is set to 4.5 and FOV is tight. Play smart and you will never catch a ban.' }
+    ]);
+
+    const handleNewThreadSubmit = (e) => {
+      e.preventDefault();
+      const title = e.target.title.value;
+      const content = e.target.content.value;
+      const newThread = {
+        id: Date.now(),
+        categoryId: activeCat.id,
+        title,
+        author: 'Guest_User',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        replies: [],
+        views: 0,
+        content
+      };
+      setThreads([newThread, ...threads]);
+      setShowThreadForm(false);
+    };
+
+    const handleReplySubmit = (e) => {
+      e.preventDefault();
+      const content = e.target.reply.value;
+      const updatedThreads = threads.map(t => {
+        if (t.id === activeThread.id) {
+          const newReply = { author: 'Guest_User', date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), content };
+          const updatedThread = { ...t, replies: [...t.replies, newReply] };
+          setActiveThread(updatedThread);
+          return updatedThread;
+        }
+        return t;
+      });
+      setThreads(updatedThreads);
+      e.target.reset();
+    };
+
+    if (fView === 'categories') {
+      return (
+        <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
+          <div className="flex items-center justify-between mb-16">
+            <div>
+              <h2 className="text-5xl font-black italic text-white uppercase tracking-tighter">COMMUNITY <span className="text-hacker-green">FORUMS</span></h2>
+              <p className="text-white/40 mt-2">Connect with elite users, share configs, and read announcements.</p>
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  );
+          <div className="space-y-8 pointer-events-auto">
+            {categories.map((forum, i) => {
+              const postCount = threads.filter(t => t.categoryId === forum.id).length;
+              const replyCount = threads.filter(t => t.categoryId === forum.id).reduce((acc, t) => acc + t.replies.length, 0);
+              return (
+                <div key={i} onClick={() => { setActiveCat(forum); setFView('threads'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="bg-white/5 border border-white/10 rounded-[30px] p-8 flex items-center justify-between hover:bg-white/10 transition-all cursor-pointer group">
+                  <div className="flex items-center space-x-6">
+                    <div className={`w-16 h-16 rounded-2xl bg-black/50 border border-white/5 flex items-center justify-center ${forum.color} group-hover:scale-110 transition-transform`}>
+                      {forum.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black uppercase text-white tracking-wide mb-1 flex items-center gap-3">{forum.title} <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-white/50">Category</span></h3>
+                      <p className="text-sm text-white/40">{forum.desc}</p>
+                    </div>
+                  </div>
+                  <div className="text-right hidden md:block">
+                    <div className="text-2xl font-black text-white">{postCount + replyCount}</div>
+                    <div className="text-[9px] uppercase tracking-widest text-white/30">Total Posts</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (fView === 'threads') {
+      const catThreads = threads.filter(t => t.categoryId === activeCat.id);
+      return (
+        <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
+          <button onClick={() => setFView('categories')} className="flex items-center space-x-3 text-white/30 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest mb-16 pointer-events-auto"><ArrowLeft size={16} /><span>Back to Categories</span></button>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-16 gap-6">
+            <div className="flex items-center space-x-6">
+              <div className={`w-16 h-16 rounded-2xl bg-black/50 border border-white/5 flex items-center justify-center ${activeCat.color}`}>{activeCat.icon}</div>
+              <div>
+                <h2 className="text-3xl md:text-5xl font-black italic text-white uppercase tracking-tighter">{activeCat.title}</h2>
+                <p className="text-white/40 mt-1">{activeCat.desc}</p>
+              </div>
+            </div>
+            <button onClick={() => setShowThreadForm(!showThreadForm)} className="px-6 py-3 bg-hacker-green text-black hover:bg-white transition-all rounded-full text-[10px] font-black uppercase tracking-widest pointer-events-auto whitespace-nowrap">
+              {showThreadForm ? 'Cancel Thread' : 'New Thread'}
+            </button>
+          </div>
+
+          <div className="space-y-6 pointer-events-auto">
+            {showThreadForm && (
+              <form onSubmit={handleNewThreadSubmit} className="bg-white/5 border border-white/10 p-8 rounded-3xl mb-8 space-y-4 shadow-2xl">
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest pl-4 mb-2 block">Thread Title</label>
+                  <input name="title" required autoFocus type="text" className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-hacker-green transition-all" placeholder="Enter an engaging title..." />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest pl-4 mb-2 block">Content</label>
+                  <textarea name="content" required rows={5} className="w-full bg-black/50 border border-white/10 rounded-2xl p-6 text-white focus:outline-none focus:border-hacker-green transition-all custom-scrollbar" placeholder="Type your post here..." />
+                </div>
+                <div className="flex justify-end">
+                  <button type="submit" className="px-8 py-3 bg-hacker-green text-black font-black uppercase tracking-widest text-xs rounded-xl hover:bg-white transition-all">Post Thread</button>
+                </div>
+              </form>
+            )}
+
+            {catThreads.length === 0 && !showThreadForm && (
+              <div className="text-center py-20 bg-white/5 border border-white/10 rounded-3xl text-white/30 font-black uppercase tracking-widest text-sm">No threads yet. Be the first to start a discussion!</div>
+            )}
+
+            {catThreads.map(t => (
+              <div key={t.id} onClick={() => { setActiveThread(t); setFView('post'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="bg-gradient-to-r from-white/5 to-transparent border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between hover:border-hacker-green/50 hover:bg-white/10 transition-all cursor-pointer gap-6">
+                <div>
+                  <h4 className="text-xl font-black text-white mb-2">{t.title}</h4>
+                  <div className="flex flex-wrap items-center gap-2 md:space-x-4 text-[10px] font-black uppercase tracking-widest text-white/40">
+                    <span className="bg-black/50 px-3 py-1 rounded-full text-hacker-green border border-white/5">{t.author}</span>
+                    <span className="hidden md:inline">•</span>
+                    <span>{t.date}</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-8 text-right bg-black/20 px-6 py-3 rounded-2xl border border-white/5 w-full md:w-auto justify-between md:justify-end">
+                  <div>
+                    <div className="text-white font-black text-xl">{t.replies.length}</div>
+                    <div className="text-[9px] uppercase tracking-widest text-white/30">Replies</div>
+                  </div>
+                  <div>
+                    <div className="text-white font-black text-xl">{t.views}</div>
+                    <div className="text-[9px] uppercase tracking-widest text-white/30">Views</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (fView === 'post') {
+      return (
+        <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
+          <div className="flex items-center justify-between mb-16 pointer-events-auto">
+            <button onClick={() => setFView('threads')} className="flex items-center space-x-3 text-hacker-green hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><ArrowLeft size={16} /><span>Return to {activeCat.title}</span></button>
+            <div className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/5 text-white/50 border border-white/10 flex items-center space-x-2"><Activity size={12} className="text-hacker-green" /><span>{activeThread.views} Views</span></div>
+          </div>
+
+          <h2 className="text-3xl md:text-5xl font-black text-white mb-12 italic tracking-tighter leading-tight border-l-4 border-hacker-green pl-6">{activeThread.title}</h2>
+
+          <div className="space-y-6 pointer-events-auto">
+            {/* Original Post */}
+            <div className="bg-gradient-to-br from-white/10 to-transparent border border-white/20 rounded-[40px] p-6 md:p-10 flex flex-col md:flex-row gap-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-hacker-green/5 blur-[100px] rounded-full pointer-events-none" />
+              <div className="flex-shrink-0 text-center w-full md:w-32 border-b md:border-b-0 md:border-r border-white/10 pb-6 md:pb-0 md:pr-8">
+                <div className="w-20 h-20 mx-auto rounded-2xl bg-black border border-hacker-green/30 flex items-center justify-center text-hacker-green font-black mb-4 shadow-[0_0_20px_rgba(0,255,0,0.1)] text-2xl">{activeThread.author.charAt(0)}</div>
+                <div className="text-[11px] font-black text-white break-all">{activeThread.author}</div>
+                <div className="text-[9px] uppercase tracking-widest text-hacker-green mt-1">Author</div>
+              </div>
+              <div className="flex-grow z-10">
+                <div className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-8 pb-4 border-b border-white/10">Posted on {activeThread.date}</div>
+                <div className="text-white/90 leading-relaxed text-base whitespace-pre-wrap">{activeThread.content}</div>
+              </div>
+            </div>
+
+            {/* Replies */}
+            {activeThread.replies.map((r, i) => (
+              <div key={i} className="bg-black/60 border border-white/5 rounded-[40px] p-6 md:p-10 flex flex-col md:flex-row gap-8 md:ml-20 mt-8 relative">
+                <div className="flex-shrink-0 text-center w-full md:w-32 border-b md:border-b-0 md:border-r border-white/5 pb-6 md:pb-0 md:pr-8">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 font-black mb-4">{r.author.charAt(0)}</div>
+                  <div className="text-[10px] font-black text-white break-all">{r.author}</div>
+                  <div className="text-[8px] uppercase tracking-widest text-white/30 mt-1">Member</div>
+                </div>
+                <div className="flex-grow">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-white/20 mb-6 pb-4 border-b border-white/5 flex justify-between">
+                    <span>Posted on {r.date}</span>
+                    <span className="text-white/10">#{i + 1}</span>
+                  </div>
+                  <div className="text-white/70 leading-relaxed text-sm whitespace-pre-wrap">{r.content}</div>
+                </div>
+              </div>
+            ))}
+
+            {/* Reply Form */}
+            <form onSubmit={handleReplySubmit} className="mt-16 md:ml-20 border-t border-white/10 pt-12">
+              <label className="text-xs font-black text-hacker-green uppercase tracking-widest mb-4 flex items-center space-x-3"><MessageSquare size={16} /><span>Post a Reply</span></label>
+              <textarea name="reply" required rows={4} className="w-full bg-black/50 border border-white/10 rounded-3xl p-6 text-white text-sm focus:outline-none focus:border-hacker-green transition-all custom-scrollbar mb-6 shadow-inner" placeholder="Contribute to the discussion..." />
+              <div className="flex justify-end">
+                <button type="submit" className="px-10 py-4 bg-white text-black font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-hacker-green transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)] flex items-center space-x-2">
+                  <span>Submit Reply</span>
+                  <Send size={14} />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+  };
 
   const ReviewsView = () => {
     // Procedural generation to avoid 42k array crashing DOM
