@@ -4,7 +4,7 @@ import {
   ArrowRight, ChevronRight, Database, Search, MessageSquare, Activity, LifeBuoy,
   Star, Monitor, Filter, MoreVertical, Plus, Send, HelpCircle, FileText,
   ShoppingBag, Trash2, Minus, CreditCard, ArrowLeft, Menu, X, ShieldCheck,
-  Package, ExternalLink, Info, Layers, RefreshCw, Key, CreditCard as CardIcon
+  Package, ExternalLink, Info, Layers, RefreshCw, Key, CreditCard as CardIcon, UploadCloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './lib/supabase';
@@ -369,7 +369,7 @@ const MetaCheats = () => {
         <p className="text-white/40 mt-4 max-w-2xl mx-auto">Real-time operational status of all MetaCheats modules. We monitor all supported titles 24/7 to ensure maximum security.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-        {allProds.map(p => (
+        {liveGames.map(p => (
           <div key={p.id} className="bg-white/5 border border-white/10 rounded-3xl p-6 flex justify-between items-center hover:border-white/20 transition-all">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-black border border-white/10 overflow-hidden">
