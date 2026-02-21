@@ -111,15 +111,28 @@ const MetaCheats = () => {
     }
   };
 
-  const handlePurchase = (path) => {
-    if (!path) {
+  const handlePurchase = (product) => {
+    if (!product || !product.id) {
       alert("Synchronization in progress. Please wait a few seconds for the product link to secure.");
       return;
     }
-    if (window.SellAuth) {
-      window.SellAuth.open(path);
+
+    // Attempt direct checkout via SellAuth Embed SDK
+    if (window.sellAuthEmbed && window.sellAuthEmbed.checkout) {
+      const variantId = product.variants && product.variants.length > 0 ? product.variants[0].id : null;
+      window.sellAuthEmbed.checkout({
+        productId: String(product.id),
+        variantId: variantId ? String(variantId) : undefined,
+        quantity: 1,
+        shopId: '169969',
+        modal: true
+      });
+    } else if (window.SellAuth) {
+      // Fallback 1: Old open method
+      window.SellAuth.open(product.path);
     } else {
-      window.open(`${SELLAUTH_STORE_URL}/product/${path}`, '_blank');
+      // Fallback 2: Direct link
+      window.open(`${SELLAUTH_STORE_URL}/product/${product.path}`, '_blank');
     }
   };
 
@@ -325,7 +338,7 @@ const MetaCheats = () => {
           <div className="mt-auto p-12 bg-white/5 border border-white/10 rounded-[50px] space-y-8">
             <div className="flex items-center justify-between"><div><div className="text-[10px] font-black text-white/20 uppercase mb-2">Price Total</div><div className="text-5xl font-black text-white italic">${selectedProduct?.price || "25.00"}</div></div><div className="px-6 py-2 bg-hacker-green/10 border border-hacker-green/20 rounded-full text-hacker-green text-[10px] font-black uppercase tracking-widest">Instant Delivery</div></div>
             <button
-              onClick={() => handlePurchase(selectedProduct?.path)}
+              onClick={() => handlePurchase(selectedProduct)}
               disabled={!selectedProduct?.path}
               className={`w-full py-6 rounded-3xl font-black uppercase text-xs tracking-widest transition-all shadow-[0_0_40px_rgba(0,255,0,0.2)] pointer-events-auto ${!selectedProduct?.path ? 'bg-white/10 text-white/20 cursor-not-allowed' : 'bg-hacker-green text-black hover:bg-white hover:scale-[1.02]'}`}
             >
