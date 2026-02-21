@@ -128,30 +128,11 @@ const MetaCheats = () => {
         shopId: '169969',
         modal: false // Forces redirect instead of overlay
       });
+    } else if (window.SellAuth) {
+      window.SellAuth.open(product.path);
     } else {
-      // Foolproof POST form to bypass product page and trigger checkout session
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = `${SELLAUTH_STORE_URL}/cart/add`;
-
-      const productIdInput = document.createElement('input');
-      productIdInput.type = 'hidden';
-      productIdInput.name = 'product_id';
-      productIdInput.value = product.id;
-      form.appendChild(productIdInput);
-
-      if (variantId) {
-        const variantInput = document.createElement('input');
-        variantInput.type = 'hidden';
-        variantInput.name = 'variant_id';
-        variantInput.value = variantId;
-        form.appendChild(variantInput);
-      }
-
-      // CSRF token if needed, usually open endpoints don't strictly require it for external forms,
-      // but if it fails, it will gracefully redirect them to the cart/product page.
-      document.body.appendChild(form);
-      form.submit();
+      // Safe fallback redirect to product page
+      window.open(`${SELLAUTH_STORE_URL}/product/${product.path}`, '_blank');
     }
   };
 
