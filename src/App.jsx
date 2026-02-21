@@ -51,12 +51,16 @@ const MetaCheats = () => {
           return;
         }
 
-        const data = await res.json();
         if (data && data.groups) {
           setLiveGroups(data.groups);
           let allProds = [];
           data.groups.forEach(g => {
-            if (g.products) allProds = [...allProds, ...g.products.map(p => ({ ...p, groupId: g.id }))];
+            if (g.products && Array.isArray(g.products)) {
+              allProds = [...allProds, ...g.products.map(p => {
+                const displayPrice = p.price || (p.variants && p.variants[0]?.price) || "25.00";
+                return { ...p, groupId: g.id, price: displayPrice };
+              })];
+            }
           });
           setLiveGames(allProds);
           setSyncStatus('Sector Synchronized');
