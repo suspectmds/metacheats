@@ -22,14 +22,14 @@ export default async function handler(req, res) {
         const payload = {
             cart: [
                 {
-                    product_id: productId,
+                    productId: productId,
                     quantity: 1
                 }
             ]
         };
 
         if (variantId) {
-            payload.cart[0].variant_id = variantId;
+            payload.cart[0].variantId = variantId;
         }
 
         const response = await axios.post(
