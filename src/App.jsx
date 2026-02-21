@@ -50,7 +50,7 @@ const MetaCheats = () => {
           setTimeout(() => setIsAppInitializing(false), 3000);
           return;
         }
-
+        const data = await res.json();
         if (data && data.groups) {
           setLiveGroups(data.groups);
           let allProds = [];
