@@ -234,7 +234,7 @@ const MetaCheats = () => {
                 onClick={() => { setSelectedGroup(group); setView('Group'); window.scrollTo(0, 0); }}
                 className="group relative aspect-[3/4] rounded-[40px] overflow-hidden border border-white/5 hover:border-hacker-green/40 cursor-pointer transition-all duration-500 pointer-events-auto bg-black"
               >
-                <img src={group.image_url || group.image || "https://images.unsplash.com/photo-1542714598-040b5f812ee2?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700" />
+                <img src={group.image?.url || group.image_url || "https://images.unsplash.com/photo-1542714598-040b5f812ee2?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
                 <div className="absolute inset-0 p-10 flex flex-col justify-end z-20">
                   <h3 className="text-3xl font-black italic text-white uppercase tracking-tighter group-hover:text-hacker-green transition-colors">{group.name}</h3>
@@ -270,7 +270,7 @@ const MetaCheats = () => {
             >
               <div className="absolute inset-x-0 h-1 top-0 bg-hacker-green opacity-0 group-hover:opacity-100 transition-all" />
               <div className="aspect-video rounded-3xl overflow-hidden mb-8 border border-white/10">
-                <img src={group.image_url || "https://images.unsplash.com/photo-1542714598-040b5f812ee2?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+                <img src={group.image?.url || group.image_url || "https://images.unsplash.com/photo-1542714598-040b5f812ee2?auto=format&fit=crop&w=800&q=80"} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
               </div>
               <h3 className="text-4xl font-black italic text-white uppercase tracking-tighter mb-4">{group.name}</h3>
               <p className="text-white/40 text-sm font-bold uppercase tracking-widest mb-10">Full Access • Instant Email</p>
@@ -283,10 +283,10 @@ const MetaCheats = () => {
   );
 
   const GroupView = () => {
-    const products = liveGames.length > 0 ? liveGames.filter(p => p.groupId === selectedGroup.id) : [];
+    const products = liveGames.length > 0 ? liveGames.filter(p => String(p.groupId) === String(selectedGroup.id)) : [];
     return (
       <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
-        <button onClick={() => setView(getAccountGroups().some(a => a.id === selectedGroup.id) ? 'Accounts' : 'Home')} className="flex items-center space-x-3 text-white/30 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest mb-16 pointer-events-auto"><ArrowLeft size={16} /><span>Back To Explorer</span></button>
+        <button onClick={() => setView(getAccountGroups().some(a => String(a.id) === String(selectedGroup.id)) ? 'Accounts' : 'Home')} className="flex items-center space-x-3 text-white/30 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest mb-16 pointer-events-auto"><ArrowLeft size={16} /><span>Back To Explorer</span></button>
         <div className="flex items-center space-x-6 mb-20"><div className="w-1.5 h-16 bg-hacker-green rounded-full shadow-[0_0_20px_rgba(0,255,0,0.5)]" /><h2 className="text-7xl font-black italic text-white uppercase tracking-tighter">{selectedGroup.name}</h2></div>
         {products.length === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-[40px] p-24 text-center"><Package className="mx-auto text-white/10 mb-8" size={64} /><div className="text-white/20 font-black uppercase text-xs tracking-widest">No Active Modules in Sector</div></div>
@@ -294,7 +294,11 @@ const MetaCheats = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {products.map(p => (
               <motion.div key={p.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass p-10 rounded-[40px] border border-white/5 hover:border-hacker-green/20 transition-all group flex flex-col pointer-events-auto">
-                {p.image_url && <div className="aspect-video rounded-3xl overflow-hidden mb-8 border border-white/10"><img src={p.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-all" /></div>}
+                {(p.image_url || (p.images && p.images[0]?.url)) && (
+                  <div className="aspect-video rounded-3xl overflow-hidden mb-8 border border-white/10">
+                    <img src={p.image_url || p.images[0]?.url} className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+                  </div>
+                )}
                 <h3 className="text-2xl font-black italic text-white uppercase mb-4">{p.name}</h3>
                 <div className="text-white/40 text-sm mb-12 line-clamp-2 leading-relaxed">{p.description ? p.description.replace(/<[^>]*>?/gm, '').substring(0, 80) + "..." : "Elite undetected software solutions."}</div>
                 <div className="mt-auto space-y-6">
@@ -313,7 +317,7 @@ const MetaCheats = () => {
     <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
       <button onClick={() => setView('Group')} className="flex items-center space-x-3 text-white/30 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest mb-16 pointer-events-auto"><ArrowLeft size={16} /><span>Return To {selectedGroup?.name}</span></button>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-24">
-        <div className="aspect-square rounded-[60px] overflow-hidden border border-white/10 bg-black"><img src={selectedProduct?.image_url || selectedGroup?.image_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80"} className="w-full h-full object-cover opacity-80" /></div>
+        <div className="aspect-square rounded-[60px] overflow-hidden border border-white/10 bg-black"><img src={selectedProduct?.image?.url || selectedProduct?.image_url || selectedGroup?.image?.url || selectedGroup?.image_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80"} className="w-full h-full object-cover opacity-80" /></div>
         <div className="flex flex-col">
           <div className="text-[10px] font-black uppercase text-hacker-green tracking-[0.4em] mb-4">Module Details</div>
           <h2 className="text-7xl font-black italic text-white uppercase tracking-tighter mb-10 leading-none">{selectedProduct?.name}</h2>
