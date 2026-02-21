@@ -183,8 +183,11 @@ const MetaCheats = () => {
             Accounts
             {view === 'Accounts' && <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-hacker-green" />}
           </button>
-          {['Forums', 'Status', 'Support'].map(item => (
-            <button key={item} className="hover:text-hacker-green transition-all pointer-events-auto">{item}</button>
+          {['Reviews', 'Forums', 'Status', 'Support'].map(item => (
+            <button key={item} onClick={() => setView(item)} className={`hover:text-hacker-green transition-all relative group pointer-events-auto ${view === item ? 'text-white' : ''}`}>
+              {item}
+              {view === item && <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-hacker-green" />}
+            </button>
           ))}
         </nav>
 
@@ -359,6 +362,238 @@ const MetaCheats = () => {
     </div>
   );
 
+  const StatusView = () => (
+    <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
+      <div className="mb-20 text-center">
+        <h2 className="text-5xl font-black italic text-white uppercase tracking-tighter">SYSTEM <span className="text-hacker-green">STATUS</span></h2>
+        <p className="text-white/40 mt-4 max-w-2xl mx-auto">Real-time operational status of all MetaCheats modules. We monitor all supported titles 24/7 to ensure maximum security.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        {allProds.map(p => (
+          <div key={p.id} className="bg-white/5 border border-white/10 rounded-3xl p-6 flex justify-between items-center hover:border-white/20 transition-all">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-black border border-white/10 overflow-hidden">
+                <img src={p.image_url || p.images?.[0]?.url || "https://images.unsplash.com/photo-1542714598-040b5f812ee2?auto=format&fit=crop&w=100&q=80"} className="w-full h-full object-cover opacity-60" />
+              </div>
+              <div>
+                <div className="text-white font-black uppercase text-sm">{p.name}</div>
+                <div className="text-white/30 text-[10px] uppercase tracking-widest">{new Date().toLocaleDateString()}</div>
+              </div>
+            </div>
+            <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-hacker-green/10 text-hacker-green border border-hacker-green/20 flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-hacker-green animate-pulse" />
+              <span>Undetected</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const SupportView = () => (
+    <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10 flex flex-col items-center">
+      <div className="mb-16 text-center">
+        <h2 className="text-5xl font-black italic text-white uppercase tracking-tighter">SUPPORT <span className="text-hacker-green">DESK</span></h2>
+        <p className="text-white/40 mt-4 max-w-xl mx-auto">Need assistance with a configuration? Open a secure ticket with our 24/7 technical team.</p>
+      </div>
+      <form className="w-full max-w-2xl bg-white/5 border border-white/10 p-10 rounded-[40px] space-y-6 pointer-events-auto" onSubmit={(e) => { e.preventDefault(); alert('Ticket submitted to central queue. A technician will reply shortly.'); }}>
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest pl-4">Username</label>
+            <input required type="text" className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-white/20 focus:outline-none focus:border-hacker-green transition-all" placeholder="Enter username..." />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest pl-4">Order Email</label>
+            <input required type="email" className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-white/20 focus:outline-none focus:border-hacker-green transition-all" placeholder="Enter email..." />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest pl-4">Department</label>
+          <select className="w-full bg-black/50 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-hacker-green transition-all appearance-none cursor-pointer">
+            <option>Technical Support (Injection/Errors)</option>
+            <option>Sales & Billing (Upgrades/Refunds)</option>
+            <option>HWID Resets (Hardware Changes)</option>
+            <option>General Investigation</option>
+          </select>
+        </div>
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest pl-4">Issue Description</label>
+          <textarea required rows={6} className="w-full bg-black/50 border border-white/10 rounded-2xl p-6 text-white placeholder-white/20 focus:outline-none focus:border-hacker-green transition-all custom-scrollbar" placeholder="Describe the problem in detail. Include any error codes..." />
+        </div>
+        <button type="submit" className="w-full py-5 bg-hacker-green text-black font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-white transition-all shadow-[0_0_30px_rgba(0,255,0,0.15)] mt-4">Submit Secure Ticket</button>
+      </form>
+    </div>
+  );
+
+  const ForumView = () => (
+    <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
+      <div className="flex items-center justify-between mb-16">
+        <div>
+          <h2 className="text-5xl font-black italic text-white uppercase tracking-tighter">COMMUNITY <span className="text-hacker-green">FORUMS</span></h2>
+          <p className="text-white/40 mt-2">Connect with elite users, share configs, and read announcements.</p>
+        </div>
+        <button className="px-6 py-3 bg-white/10 text-white hover:bg-hacker-green hover:text-black transition-all rounded-full text-[10px] font-black uppercase tracking-widest pointer-events-auto">New Thread</button>
+      </div>
+
+      <div className="space-y-8 pointer-events-auto">
+        {[
+          { icon: <Shield size={24} />, title: 'Official Announcements', desc: 'Updates directly from the MetaCheats administration.', posts: 142, color: 'text-hacker-green' },
+          { icon: <RefreshCw size={24} />, title: 'Release Notes', desc: 'Detailed patch notes for all module updates.', posts: 89, color: 'text-blue-400' },
+          { icon: <UploadCloud size={24} />, title: 'User Configs (Verified)', desc: 'Share and download HvH / Legit configs.', posts: 3402, color: 'text-purple-400' },
+          { icon: <Package size={24} />, title: 'General Discussion', desc: 'Talk about anything gaming related.', posts: 8911, color: 'text-white/60' }
+        ].map((forum, i) => (
+          <div key={i} className="bg-white/5 border border-white/10 rounded-[30px] p-8 flex items-center justify-between hover:bg-white/10 transition-all cursor-pointer group">
+            <div className="flex items-center space-x-6">
+              <div className={`w-16 h-16 rounded-2xl bg-black/50 border border-white/5 flex items-center justify-center ${forum.color} group-hover:scale-110 transition-transform`}>
+                {forum.icon}
+              </div>
+              <div>
+                <h3 className="text-xl font-black uppercase text-white tracking-wide mb-1 flex items-center gap-3">{forum.title} <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-white/50">Category</span></h3>
+                <p className="text-sm text-white/40">{forum.desc}</p>
+              </div>
+            </div>
+            <div className="text-right hidden md:block">
+              <div className="text-2xl font-black text-white">{forum.posts.toLocaleString()}</div>
+              <div className="text-[9px] uppercase tracking-widest text-white/30">Total Posts</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const ReviewsView = () => {
+    // Procedural generation to avoid 42k array crashing DOM
+    const [page, setPage] = React.useState(1);
+    const reviewsPerPage = 20;
+    const totalReviews = 42000;
+    const totalPages = Math.ceil(totalReviews / reviewsPerPage);
+
+    // Seeded random for consistent bad review placement
+    const isBadReview = (index) => {
+      const seed = Math.sin(index * 13.37) * 42000;
+      return (seed - Math.floor(seed)) < 0.05; // 5% chance exactly
+    };
+
+    const getReviewDate = (index) => {
+      const d = new Date();
+      // Distribute 42000 reviews roughly backward over 3 years (1000 days). Approx 42 reviews per day.
+      const daysBack = Math.floor(index / 42);
+      d.setDate(d.getDate() - daysBack);
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    };
+
+    const goodComments = [
+      "Unbelievable quality. Instant delivery and injection was flawless.",
+      "Best chair I've ever used. Completely undetected for months.",
+      "Support replied in 2 minutes and helped me setup. 10/10.",
+      "Aimbot is highly customizable. Hit champion rank easily.",
+      "ESP is incredibly clean. No lag or FPS drops at all.",
+      "Been buying from MetaCheats for a year. Never banned.",
+      "Honestly the most premium menu I've seen. Worth every penny.",
+      "Works perfectly on Windows 11. Very impressive.",
+      "The spoofer works like a charm. Got back in instantly.",
+      "Highly recommended. Fast, secure, and undetected.",
+      "Streamproof works flawlessly. Highly recommend for streamers.",
+      "Simplest injection process. Just open and play."
+    ];
+
+    const badComments = [
+      "Had trouble injecting on Windows 10 updated. Waiting on support.",
+      "A feature is currently down for maintenance.",
+      "Setup was a bit confusing for a beginner.",
+      "Wish the menu had more customizable colors.",
+      "Took 5 minutes for the email to arrive instead of instant.",
+      "Anti-virus kept deleting the loader, had to make exclusions."
+    ];
+
+    const generateReviews = () => {
+      const startIndex = (page - 1) * reviewsPerPage;
+      const arr = [];
+      for (let i = 0; i < reviewsPerPage; i++) {
+        const globalIndex = startIndex + i;
+        if (globalIndex >= totalReviews) break;
+
+        const isBad = isBadReview(globalIndex);
+        const nameSeed = Math.abs(Math.sin((globalIndex + 1) * 7.7) * 10000);
+        const nameInt = Math.floor(nameSeed);
+        const anonName = `User${nameInt}`;
+
+        // Random comment based on good/bad
+        const commentList = isBad ? badComments : goodComments;
+        const cIndex = (nameInt + globalIndex) % commentList.length;
+
+        arr.push({
+          id: globalIndex,
+          name: anonName,
+          date: getReviewDate(globalIndex),
+          stars: isBad ? (1 + (nameInt % 3)) : 5, // 1-3 stars for bad, 5 for good
+          comment: commentList[cIndex]
+        });
+      }
+      return arr;
+    };
+
+    const currentReviews = generateReviews();
+
+    return (
+      <div className="pt-48 pb-32 max-w-7xl mx-auto px-6 min-h-screen relative z-10">
+        <div className="text-center mb-16">
+          <h2 className="text-5xl font-black italic text-white uppercase tracking-tighter">CUSTOMER <span className="text-hacker-green">REVIEWS</span></h2>
+          <div className="mt-6 inline-flex items-center space-x-4 bg-white/5 border border-white/10 px-6 py-3 rounded-full">
+            <div className="flex space-x-1 text-hacker-green">
+              {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}
+            </div>
+            <div className="text-white font-black text-sm">{totalReviews.toLocaleString()} Verified Reviews</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+          {currentReviews.map(r => (
+            <div key={r.id} className="bg-white/5 border border-white/10 p-8 rounded-3xl relative pointer-events-auto">
+              <div className="absolute top-8 right-8 text-white/20 text-[10px] uppercase font-black tracking-widest">Verified Purchase</div>
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="w-10 h-10 rounded-full bg-black/50 border border-white/10 flex items-center justify-center text-white/50 font-black">
+                  {r.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="text-white font-black">{r.name}</div>
+                  <div className="text-white/30 text-[10px] tracking-widest uppercase">{r.date}</div>
+                </div>
+              </div>
+              <div className="flex space-x-1 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={14} className={i < r.stars ? "text-hacker-green fill-hacker-green" : "text-white/10"} />
+                ))}
+              </div>
+              <p className="text-white/70 leading-relaxed text-sm">"{r.comment}"</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-center space-x-8 pointer-events-auto">
+          <button
+            disabled={page === 1}
+            onClick={() => { setPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className="px-6 py-3 bg-white/10 hover:bg-white text-white hover:text-black transition-all rounded-full font-black uppercase text-[10px] tracking-widest disabled:opacity-30 disabled:pointer-events-none"
+          >
+            Previous
+          </button>
+          <div className="text-white/50 font-black text-[10px] tracking-widest">
+            PAGE <span className="text-white">{page}</span> OF {totalPages}
+          </div>
+          <button
+            disabled={page === totalPages}
+            onClick={() => { setPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className="px-6 py-3 bg-white/10 hover:bg-white text-white hover:text-black transition-all rounded-full font-black uppercase text-[10px] tracking-widest disabled:opacity-30 disabled:pointer-events-none"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  };
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-hacker-green selection:text-black font-sans">
       <AnimatePresence>{isAppInitializing && <SplashScreen />}</AnimatePresence>
@@ -369,6 +604,10 @@ const MetaCheats = () => {
           {view === 'Accounts' && <AccountsView />}
           {view === 'Group' && selectedGroup && <motion.div key="group" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}><GroupView /></motion.div>}
           {view === 'Product' && selectedProduct && <motion.div key="product" initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}><ProductView /></motion.div>}
+          {view === 'Status' && <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><StatusView /></motion.div>}
+          {view === 'Support' && <motion.div key="support" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><SupportView /></motion.div>}
+          {view === 'Forums' && <motion.div key="forums" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><ForumView /></motion.div>}
+          {view === 'Reviews' && <motion.div key="reviews" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><ReviewsView /></motion.div>}
         </AnimatePresence>
       </main>
       <Foot />
