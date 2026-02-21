@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './lib/supabase';
 import AuthModal from './components/AuthModal';
 
-const SELLAUTH_STORE_URL = "https://metacheats.sellauth.com";
+const SELLAUTH_STORE_URL = "https://metacheat.mysellauth.com";
 
 // --- FALLBACKS ---
 const staticGroups = [
