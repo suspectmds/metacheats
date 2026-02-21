@@ -9,8 +9,12 @@ async function test() {
             {
                 cart: [
                     {
-                        productId: 726554,
-                        variantId: 977033,
+                        productId: 619348,
+                        quantity: 1
+                    },
+                    {
+                        productId: 415590,
+                        variantId: 599676,
                         quantity: 1
                     }
                 ]

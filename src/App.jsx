@@ -111,27 +111,36 @@ const MetaCheats = () => {
     }
   };
 
-  const handlePurchase = (product) => {
+  const handlePurchase = async (product) => {
     if (!product || !product.id) {
       alert("Synchronization in progress. Please wait a few seconds...");
       return;
     }
 
+    // Attempt Direct API Checkout
     const variantId = product.variants && product.variants.length > 0 ? product.variants[0].id : null;
-    const embedSdk = window.SellAuthEmbed || window.sellAuthEmbed;
 
-    if (embedSdk && embedSdk.checkout) {
-      embedSdk.checkout({
-        productId: String(product.id),
-        variantId: variantId ? String(variantId) : undefined,
-        quantity: 1,
-        shopId: '169969',
-        modal: false // Forces redirect instead of overlay
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          variantId: variantId
+        })
       });
-    } else if (window.SellAuth) {
-      window.SellAuth.open(product.path);
-    } else {
-      // Safe fallback redirect to product page
+
+      const data = await res.json();
+
+      if (res.ok && data.url) {
+        window.open(data.url, '_blank');
+      } else {
+        console.error("Direct checkout failed:", data.error);
+        // Fallback to standard product page
+        window.open(`${SELLAUTH_STORE_URL}/product/${product.path}`, '_blank');
+      }
+    } catch (err) {
+      console.error("Fetch error during checkout:", err);
       window.open(`${SELLAUTH_STORE_URL}/product/${product.path}`, '_blank');
     }
   };
