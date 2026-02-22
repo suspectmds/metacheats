@@ -39,8 +39,6 @@ export default async function handler(req, res) {
         }
 
         let allGroups = [];
-        let allProducts = [];
-
         for (const shopId of SHOP_IDS) {
             try {
                 const [gRes, pRes] = await Promise.all([
@@ -55,11 +53,28 @@ export default async function handler(req, res) {
                 ]);
 
                 const shopGroups = gRes.data.data || [];
-                const shopProducts = pRes.data.data || [];
+                const productsShort = pRes.data.data || [];
 
-                // Map products to groups
+                // NEW: Fetch DETAILED information for each product to get descriptions
+                const detailedProducts = [];
+                // Use a smaller delay for serverless execution speed (200ms)
+                for (const p of productsShort) {
+                    try {
+                        const detailRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${p.id}`, {
+                            headers: { 'Authorization': `Bearer ${API_KEY}` },
+                            timeout: 8000
+                        });
+                        detailedProducts.push(detailRes.data || p);
+                        await new Promise(r => setTimeout(r, 200));
+                    } catch (e) {
+                        console.error(`Detail Fetch Fail ${p.id}:`, e.message);
+                        detailedProducts.push(p);
+                    }
+                }
+
+                // Map products to groups using robust string comparison
                 shopGroups.forEach(group => {
-                    group.products = shopProducts.filter(p => p.group_id === group.id);
+                    group.products = detailedProducts.filter(p => String(p.group_id) === String(group.id));
                 });
 
                 allGroups = [...allGroups, ...shopGroups];

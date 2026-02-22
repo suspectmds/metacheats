@@ -49,56 +49,59 @@ app.get('/api/products', async (req, res) => {
         const cached = getCachedData();
         const now = Date.now();
 
-        // If cache exists and is fresh (within 1 hour), return it immediately
         if (cached && (now - cached.timestamp < CACHE_DURATION)) {
             return res.json({ groups: cached.data });
         }
 
         let allGroups = [];
         for (const shopId of SHOP_IDS) {
-            try {
-                const [gRes, pRes] = await Promise.all([
-                    axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
+            console.log(`[SYNC] Starting fetch for Shop ${shopId}`);
+
+            const gRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
+                headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
+                timeout: 10000
+            });
+            const groups = gRes.data.data || [];
+
+            const pRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products?per_page=100`, {
+                headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
+                timeout: 10000
+            });
+            const productsShort = pRes.data.data || [];
+
+            console.log(`[SYNC] Fetching details for ${productsShort.length} products...`);
+            const detailedProducts = [];
+            for (const p of productsShort) {
+                try {
+                    const detailRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${p.id}`, {
                         headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
                         timeout: 10000
-                    }),
-                    axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products?per_page=100`, {
-                        headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
-                        timeout: 10000
-                    })
-                ]);
-
-                const groups = gRes.data.data || [];
-                const products = pRes.data.data || [];
-
-                // Reconstruct Hierarchy
-                groups.forEach(group => {
-                    group.products = products.filter(p => p.group_id === group.id);
-                });
-
-                allGroups = [...allGroups, ...groups];
-            } catch (innerError) {
-                if (innerError.response?.status === 429) {
-                    console.error(`SellAuth RATE LIMIT (429) on Shop ${shopId}. Backing off.`);
-                    // Throw to outer catch to return stale data
-                    throw innerError;
+                    });
+                    const fullP = detailRes.data;
+                    detailedProducts.push(fullP);
+                    await new Promise(r => setTimeout(r, 600)); // Rate limit safety
+                } catch (e) {
+                    console.error(`[SYNC] Failed ${p.id}: ${e.message}`);
+                    detailedProducts.push(p);
                 }
-                console.error(`Shop ${shopId} Fetch Error:`, innerError.message);
             }
+
+            groups.forEach(group => {
+                group.products = detailedProducts.filter(p => String(p.group_id) === String(group.id));
+            });
+
+            allGroups = [...allGroups, ...groups];
         }
 
-        // Success: Update Cache
         if (allGroups.length > 0) {
+            console.log(`[SYNC] Success. Caching ${allGroups.length} groups.`);
             setCachedData(allGroups);
         }
         res.json({ groups: allGroups });
     } catch (error) {
-        console.error('SellAuth Local Proxy Error:', error.message);
-
-        // On ANY failure (especially 429), return cached data if available (even if very old)
+        console.error('[SYNC] Global Error:', error.message);
         const cached = getCachedData();
         if (cached && cached.data) {
-            console.log('EMERGENCY: Serving from stale cache to avoid further API load.');
             return res.json({ groups: cached.data, isStale: true });
         }
 
@@ -144,6 +147,51 @@ app.get('/api/reviews', async (req, res) => {
         res.json({ reviews: allReviews });
     } catch (error) {
         res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+});
+
+// Checkout Proxy (Local Development)
+app.post('/api/checkout', async (req, res) => {
+    try {
+        const { productId, variantId } = req.body;
+        if (!productId) {
+            return res.status(400).json({ error: 'Product ID is required' });
+        }
+
+        const shopId = SHOP_IDS[0];
+        const payload = {
+            cart: [
+                {
+                    productId: productId,
+                    quantity: 1
+                }
+            ]
+        };
+
+        if (variantId) {
+            payload.cart[0].variantId = variantId;
+        }
+
+        const response = await axios.post(
+            `https://api.sellauth.com/v1/shops/${shopId}/checkout`,
+            payload,
+            {
+                headers: {
+                    'Authorization': `Bearer ${SELLAUTH_API_KEY}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (response.data && response.data.url) {
+            res.json({ url: response.data.url });
+        } else {
+            res.status(500).json({ error: 'Failed to generate checkout URL', details: response.data });
+        }
+    } catch (error) {
+        console.error('Checkout Local API Error:', error.response?.data || error.message);
+        res.status(500).json({ error: "Failed to create checkout session" });
     }
 });
 
