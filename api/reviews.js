@@ -15,13 +15,12 @@ export default async function handler(req, res) {
 
         const feedbacks = response.data.data || [];
 
-        // Map to frontend format
         const mappedReviews = feedbacks.map(f => ({
-            user: f.email ? f.email.split('@')[0] : "Verified User",
+            user: f.invoice?.email ? f.invoice.email.split('@')[0] : (f.email ? f.email.split('@')[0] : "Verified User"),
             date: new Date(f.created_at).toLocaleDateString(),
             rating: f.rating || 5,
-            comment: f.comment || "No comment provided.",
-            product: f.order?.product?.name || "Premium Product"
+            comment: f.message || f.comment || f.feedback || f.review || "No comment provided.",
+            product: f.invoice?.items?.[0]?.product?.name || f.order?.product?.name || f.product?.name || "Premium Product"
         }));
 
         res.status(200).json({ reviews: mappedReviews });

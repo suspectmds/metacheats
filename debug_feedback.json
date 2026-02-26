@@ -1,0 +1,38 @@
+{
+  "id": 2071895,
+  "invoice_id": 10305814,
+  "status": "published",
+  "message": "Immediate delivery, good service and help",
+  "rating": 5,
+  "is_automatic": false,
+  "reply": null,
+  "dispute_reason": null,
+  "disputed_at": null,
+  "replied_at": null,
+  "created_at": "2026-02-26T01:09:44.000000Z",
+  "updated_at": "2026-02-26T01:09:44.000000Z",
+  "deleted_at": null,
+  "invoice": {
+    "id": 10305814,
+    "salt": "f5761e6364f3e",
+    "email": "olivershelsing@gmail.com",
+    "unique_id": "f5761e6364f3e-0000010305814",
+    "items": [
+      {
+        "id": 8611137,
+        "invoice_id": 10305814,
+        "product_id": 611995,
+        "variant_id": 955421,
+        "product": {
+          "id": 611995,
+          "name": "R6 – Account Gen",
+          "stock_count": 0
+        },
+        "variant": {
+          "id": 955421,
+          "name": "1 Day"
+        }
+      }
+    ]
+  }
+}

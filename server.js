@@ -8,7 +8,7 @@ import path from 'path';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 // Middlewares
 app.use(bodyParser.json());
@@ -135,13 +135,16 @@ app.get('/api/reviews', async (req, res) => {
             const resp = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/feedbacks`, {
                 headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` }
             });
-            const mapped = (resp.data.data || []).map(f => ({
-                user: f.email ? f.email.split('@')[0] : "Verified User",
-                date: new Date(f.created_at).toLocaleDateString(),
-                rating: f.rating || 5,
-                comment: f.comment || "No comment provided.",
-                product: f.order?.product?.name || "Premium Product"
-            }));
+            const mapped = (resp.data.data || []).map(f => {
+                const m = {
+                    user: f.invoice?.email ? f.invoice.email.split('@')[0] : (f.email ? f.email.split('@')[0] : "Verified User"),
+                    date: new Date(f.created_at).toLocaleDateString(),
+                    rating: f.rating || 5,
+                    comment: f.message || f.comment || f.feedback || f.review || "No comment provided.",
+                    product: f.invoice?.items?.[0]?.product?.name || f.order?.product?.name || f.product?.name || "Premium Product"
+                };
+                return m;
+            });
             allReviews = [...allReviews, ...mapped];
         }
         res.json({ reviews: allReviews });
@@ -200,6 +203,7 @@ app.post('/api/webhook', (req, res) => {
     res.status(200).send('Webhook Received');
 });
 
+// Start the server
 app.listen(PORT, () => {
     console.log(`MetaCheats Backend running on port ${PORT}`);
 });

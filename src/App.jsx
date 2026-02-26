@@ -14,15 +14,15 @@ const SELLAUTH_STORE_URL = import.meta.env.VITE_SELLAUTH_STORE_URL || "https://m
 
 // --- FALLBACKS ---
 const staticGroups = [
-  { id: "60326", name: "RAINBOW SIX SIEGE SERVICES", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
-  { id: "60329", name: "FORTNITE SERVICES", image_url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=800&q=80" },
-  { id: "84914", name: "APEX LEGENDS SERVICES.", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
-  { id: "74053", name: "CS2 SERVICES", image_url: "https://images.unsplash.com/photo-1542714598-040b5f812ee2?auto=format&fit=crop&w=800&q=80" },
-  { id: "spoofer", name: "WOOFER SPOOFER", image_url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80" },
-  { id: "eft", name: "EFT SERVICES", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
-  { id: "rust", name: "RUST SERVICES", image_url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=800&q=80" },
-  { id: "bf6", name: "BATTLEFIELD 6 SERVICES", image_url: "https://images.unsplash.com/photo-1542714598-040b5f812ee2?auto=format&fit=crop&w=800&q=80" },
-  { id: "arc", name: "ARCRAIDER SERVICES", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" }
+  { id: "60326", name: "R6 CHEATS & HACKS", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
+  { id: "60329", name: "FORTNITE CHEATS & HACKS", image_url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=800&q=80" },
+  { id: "84914", name: "APEX LEGENDS HACKS", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
+  { id: "74053", name: "CS2 CHEATS & HACKS", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
+  { id: "spoofer", name: "HWID SPOOFER HACKS", image_url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80" },
+  { id: "eft", name: "EFT HACKS & SERVICES", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" },
+  { id: "rust", name: "RUST CHEATS & HACKS", image_url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=800&q=80" },
+  { id: "bf6", name: "BATTLEFIELD 6 HACKS", image_url: "https://images.unsplash.com/photo-1542714598-040b5f812ee2?auto=format&fit=crop&w=800&q=80" },
+  { id: "arc", name: "ARCRAIDER HACKS", image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80" }
 ];
 
 const staticAccountGroups = [
@@ -191,9 +191,9 @@ const HomeView = ({ setView, getCheatGroups, setSelectedGroup }) => (
             <div className="w-2 h-2 rounded-full bg-hacker-green animate-ping" />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-hacker-green">Systems Online / v4.2.0</span>
           </div>
-          <h2 className="text-8xl font-black italic text-white uppercase leading-[0.85] tracking-tighter mb-8 group">
-            PREMIUM <span className="text-hacker-green block">CHEATS</span>
-          </h2>
+          <h1 className="text-7xl md:text-8xl font-black italic text-white uppercase leading-[0.85] tracking-tighter mb-8 group">
+            ELITE <span className="text-hacker-green">HACKS</span> <br /> & GAME CHEATS
+          </h1>
           <p className="text-lg text-white/40 font-medium max-w-lg mb-12 leading-relaxed">
             Precision-engineered tools for the ultimate competitive edge.
           </p>
@@ -903,13 +903,14 @@ const MetaCheats = () => {
         window.location.href = data.url;
       } else {
         console.error("Direct checkout failed:", data.error);
-        // Fallback to standard product page with variant pre-selected
-        const fallbackUrl = `${SELLAUTH_STORE_URL}/product/${product.path || product.slug || product.id}${variantId ? `?variant=${variantId}` : ''}`;
+        const identifier = product.path || product.slug || product.id;
+        const fallbackUrl = `${SELLAUTH_STORE_URL}/product/${identifier}${variantId ? `?variant=${variantId}` : ''}`;
         window.location.href = fallbackUrl;
       }
     } catch (err) {
       console.error("Fetch error during checkout:", err);
-      window.location.href = `${SELLAUTH_STORE_URL}/product/${product.path}`;
+      const identifier = product.path || product.slug || product.id;
+      window.location.href = `${SELLAUTH_STORE_URL}/product/${identifier}`;
     }
   };
 
