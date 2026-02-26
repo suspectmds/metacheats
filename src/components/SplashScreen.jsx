@@ -123,7 +123,7 @@ const SplashScreen = ({ onComplete }) => {
                     {/* The Logo Image */}
                     <div className="w-full h-full flex items-center justify-center relative z-10">
                         <img
-                            src="/src/assets/logo.png"
+                            src="/logo.png"
                             alt="Meta Cheats Logo"
                             className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(34, 197, 94, 0.8)]"
                         />

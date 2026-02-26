@@ -66,7 +66,7 @@ const CoursesPage = () => {
             <nav className="glass h-20 px-6 flex items-center justify-between border-b border-white/5 sticky top-0 z-50">
                 <span className="font-extrabold text-[10px] uppercase tracking-[0.3em]">Return to Nexus</span>
                 <div className="flex items-center gap-3">
-                    <img src="/src/assets/logo.png" alt="Meta Cheats" className="h-8 w-auto object-contain drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                    <img src="/logo.png" alt="Meta Cheats" className="h-8 w-auto object-contain drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
                     <span className="font-black tracking-tighter text-accent uppercase" style={{ textShadow: '0 0 10px rgba(34, 197, 94, 0.6)' }}>COURSES HUB</span>
                 </div>
                 <button
