@@ -37,32 +37,14 @@ const ProductModal = ({ product, description, onClose }) => {
     const handleCheckout = async () => {
         if (!selectedVariant || checkingOut) return;
         setCheckingOut(true);
-
-        const variantId = selectedVariant.id;
-        const identifier = product.path || product.slug || product.id;
-        const checkoutFallback = `https://metacheat.mysellauth.com/product/${identifier}?variant=${variantId}`;
-
+        // Fallback: mysellauth product page
+        const slug = product.path || product.slug || product.id;
+        const fallbackUrl = `https://metacheat.mysellauth.com/product/${slug}?variant=${selectedVariant.id}`;
         try {
-            const res = await fetch('/api/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    productId: product.id,
-                    variantId: variantId
-                })
-            });
-
-            const data = await res.json();
-
-            if (res.ok && data.url) {
-                window.location.href = data.url;
-            } else {
-                console.error("Direct checkout failed:", data.error);
-                window.location.href = checkoutFallback;
-            }
-        } catch (err) {
-            console.error("Fetch error during checkout:", err);
-            window.location.href = checkoutFallback;
+            const url = await SellAuth.createCheckout(product.id, selectedVariant.id);
+            window.location.href = url || fallbackUrl;
+        } catch {
+            window.location.href = fallbackUrl;
         } finally {
             setCheckingOut(false);
         }
