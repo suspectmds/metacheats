@@ -862,7 +862,7 @@ const MetaCheats = () => {
     window.scrollTo(0, 0);
 
     try {
-      const res = await fetch(`/api/products/${product.id}`);
+      const res = await fetch(`/api/products?id=${product.id}`);
       const responseBody = await res.json();
 
       // SellAuth details might be at root or in .data depending on proxy implementation
