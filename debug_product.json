@@ -1,0 +1,77 @@
+{
+  "id": 415590,
+  "salt": "9a5f7111d8a38",
+  "path": "temp-spoofer",
+  "name": "Desync - Temp Spoofer",
+  "price": null,
+  "currency": "USD",
+  "deliverables_type": "dynamic",
+  "stock": null,
+  "group_id": 60327,
+  "category_id": null,
+  "type": "variant",
+  "visibility": "public",
+  "products_sold": 3,
+  "stock_count": 1099997,
+  "variants": [
+    {
+      "id": 599676,
+      "product_id": 415590,
+      "name": "1 week key",
+      "description": null,
+      "price": "20.00",
+      "price_slash": null,
+      "quantity_min": null,
+      "quantity_max": 100,
+      "volume_discounts": [],
+      "disable_volume_discounts_if_coupon": false,
+      "serial_selection_method": null,
+      "dynamic_url": "https://api.reselling.pro/desync/api/seller/keys/tempspoof/7/56bbb6c4c04f0d98159a82388b1f88c692af2558851cd2e0204a8c1adf46ec18",
+      "redirect_url": null,
+      "stock": 99998,
+      "instructions": "<p class=\"e-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">join the Discord and make a ticket to get your key</span></p><p class=\"e-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">https://discord.gg/silentinjectservices</span></p>",
+      "disabled_payment_method_ids": [],
+      "order": 0
+    },
+    {
+      "id": 599677,
+      "product_id": 415590,
+      "name": "1 Month  key",
+      "description": null,
+      "price": "56.00",
+      "price_slash": null,
+      "quantity_min": null,
+      "quantity_max": null,
+      "volume_discounts": [],
+      "disable_volume_discounts_if_coupon": false,
+      "serial_selection_method": null,
+      "dynamic_url": "https://api.reselling.pro/desync/api/seller/keys/tempspoof/30/56bbb6c4c04f0d98159a82388b1f88c692af2558851cd2e0204a8c1adf46ec18",
+      "redirect_url": null,
+      "stock": 999999,
+      "instructions": "<p class=\"e-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">join the Discord and make a ticket to get your key</span></p><p class=\"e-paragraph\" dir=\"ltr\"><span style=\"white-space: pre-wrap;\">https://discord.gg/silentinjectservices</span></p>",
+      "disabled_payment_method_ids": [],
+      "order": 1
+    }
+  ],
+  "images": [
+    {
+      "id": 730008,
+      "cloudflare_image_id": null,
+      "created_at": "2026-01-21T07:53:46.000000Z",
+      "updated_at": "2026-01-21T07:53:46.000000Z",
+      "deleted_at": null,
+      "shop_id": 169969,
+      "url": "https://api.sellauth.com/storage/images/730008.webp",
+      "pivot": {
+        "product_id": 415590,
+        "image_id": 730008,
+        "order": 0
+      }
+    }
+  ],
+  "group": {
+    "id": 60327,
+    "name": "Spoofer"
+  },
+  "category": null
+}

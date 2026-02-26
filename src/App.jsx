@@ -886,6 +886,8 @@ const MetaCheats = () => {
 
     // Use selected variant, or fallback to the first available
     const variantId = variant?.id || (product.variants && product.variants.length > 0 ? product.variants[0].id : null);
+    const identifier = product.path || product.slug || product.id;
+    const checkoutFallback = `https://metacheat.mysellauth.com/product/${identifier}${variantId ? `?variant=${variantId}` : ''}`;
 
     try {
       const res = await fetch('/api/checkout', {
@@ -903,14 +905,11 @@ const MetaCheats = () => {
         window.location.href = data.url;
       } else {
         console.error("Direct checkout failed:", data.error);
-        const identifier = product.path || product.slug || product.id;
-        const fallbackUrl = `${SELLAUTH_STORE_URL}/product/${identifier}${variantId ? `?variant=${variantId}` : ''}`;
-        window.location.href = fallbackUrl;
+        window.location.href = checkoutFallback;
       }
     } catch (err) {
       console.error("Fetch error during checkout:", err);
-      const identifier = product.path || product.slug || product.id;
-      window.location.href = `${SELLAUTH_STORE_URL}/product/${identifier}`;
+      window.location.href = checkoutFallback;
     }
   };
 
