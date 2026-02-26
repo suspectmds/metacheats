@@ -76,8 +76,7 @@ const App = () => {
                     <nav className="fixed top-0 left-0 right-0 z-50 glass h-20 px-6 flex items-center justify-between border-b border-white/5">
                         {/* Brand/Logo */}
                         <div className="flex items-center gap-3 w-1/4">
-                            <img src="/logo.png" alt="Meta Cheats" className="h-10 w-auto object-contain drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                            <span className="text-lg font-black tracking-tighter hidden lg:block uppercase text-accent" style={{ textShadow: '0 0 15px rgba(34, 197, 94, 0.8)' }}>META CHEATS</span>
+                            <img src="/logo.png" alt="Meta Cheats" className="h-14 md:h-16 w-auto object-contain drop-shadow-[0_0_10px_rgba(34,197,94,0.5)] cursor-pointer hover:drop-shadow-[0_0_20px_rgba(34,197,94,0.8)] transition-all" />
                         </div>
 
                         {/* Top Middle Navigation */}

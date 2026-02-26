@@ -11,8 +11,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Product ID is required' });
     }
 
-    const shopId = process.env.SELLAUTH_SHOP_ID || '169969';
-    const apiKey = process.env.SELLAUTH_API_KEY || '5561865|TOancIGgSuESgevxAri1HQKVpysGfjfrrXKrKl3Laed0e7f8';
+    const shopId = '169969';
+    const apiKey = '5561865|TOancIGgSuESgevxAri1HQKVpysGfjfrrXKrKl3Laed0e7f8';
 
     if (!shopId || !apiKey) {
         return res.status(500).json({ error: 'Server configuration missing' });
