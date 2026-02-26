@@ -46,6 +46,19 @@ app.get('/api/balance', (req, res) => {
 // Products Proxy
 app.get('/api/products', async (req, res) => {
     try {
+        if (req.query.id) {
+            const shopId = SHOP_IDS[0];
+            try {
+                const detailRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${req.query.id}`, {
+                    headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` }
+                });
+                return res.json(detailRes.data);
+            } catch (err) {
+                console.error(`SellAuth Product [${req.query.id}] Fetch Error:`, err.message);
+                return res.status(500).json({ error: "Failed to fetch product details" });
+            }
+        }
+
         const cached = getCachedData();
         const now = Date.now();
 

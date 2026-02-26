@@ -14,7 +14,17 @@ export default async function handler(req, res) {
     }
 
     const urlParts = req.url.split('/').filter(Boolean);
-    const productId = urlParts.length > 2 ? urlParts[2].split('?')[0] : req.query.id;
+
+    // Safely extract the product ID from the query string or URL parts
+    let productId = null;
+    if (urlParts.length > 2) {
+        productId = urlParts[2].split('?')[0];
+    } else if (req.query && req.query.id) {
+        productId = req.query.id;
+    } else {
+        const match = req.url.match(/[?&]id=([^&]+)/);
+        if (match) productId = match[1];
+    }
 
     // Handle Product Detail
     if (productId) {
