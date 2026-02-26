@@ -127,7 +127,12 @@ export const SellAuth = {
             if (!response.ok) return [];
 
             const data = await response.json();
-            return data.data || data.feedbacks || [];
+            const raw = data.data || data.feedbacks || [];
+            return raw.map(f => ({
+                rating: f.stars || f.rating || 5,
+                comment: f.message || f.comment || f.feedback || "",
+                customer_email: f.invoice?.email || f.email || "Anonymous"
+            }));
         } catch (error) {
             console.error('SellAuth Feedbacks Error:', error);
             return [];
