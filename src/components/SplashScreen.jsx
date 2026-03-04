@@ -1,21 +1,152 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SplashScreen = ({ onComplete }) => {
     const [loading, setLoading] = useState(0);
+    const audioCtxRef = useRef(null);
+    const oscRef = useRef(null);
+    const gainRef = useRef(null);
+    const subRef = useRef(null); // New ref for sub-harmonic oscillator
+    const noiseRef = useRef(null); // New ref for noise generator
+    const filterRef = useRef(null); // New ref for the primary oscillator's filter
 
     useEffect(() => {
+        // Initialize Audio Context on first loading tick
+        const initAudio = () => {
+            if (!audioCtxRef.current) {
+                audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+
+                const ctx = audioCtxRef.current;
+                const masterGain = ctx.createGain();
+                masterGain.connect(ctx.destination);
+                masterGain.gain.setValueAtTime(0, ctx.currentTime);
+                masterGain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.2);
+                gainRef.current = masterGain;
+
+                // 1. Primary "Power" Oscillator (Saw/Square mix feel)
+                const osc1 = ctx.createOscillator();
+                const filter1 = ctx.createBiquadFilter();
+                osc1.type = 'sawtooth';
+                filter1.type = 'lowpass';
+                filter1.frequency.value = 400;
+                osc1.connect(filter1);
+                filter1.connect(masterGain);
+                osc1.start();
+                oscRef.current = osc1;
+
+                // 2. Sub-harmonic Layer (Adds "Mass")
+                const sub = ctx.createOscillator();
+                const subGain = ctx.createGain();
+                sub.type = 'sine';
+                subGain.gain.value = 0.4;
+                sub.connect(subGain);
+                subGain.connect(masterGain);
+                sub.start();
+                subRef.current = sub;
+
+                // 3. Texture Layer (Filtered Noise for "energy" feel)
+                const bufferSize = 2 * ctx.sampleRate;
+                const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+                const noise = ctx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                noise.loop = true;
+                const noiseFilter = ctx.createBiquadFilter();
+                noiseFilter.type = 'bandpass';
+                noiseFilter.Q.value = 1;
+                const noiseGain = ctx.createGain();
+                noiseGain.gain.value = 0.05;
+                noise.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(masterGain);
+                noise.start();
+                noiseRef.current = { source: noise, filter: noiseFilter, gain: noiseGain };
+
+                filterRef.current = filter1;
+            }
+        };
+
         const interval = setInterval(() => {
             setLoading((prev) => {
-                if (prev >= 100) {
+                if (prev === 0) initAudio();
+
+                const next = Math.min(prev + 1.5, 100);
+
+                // --- Real-time Audio Sync ---
+                if (audioCtxRef.current && gainRef.current) {
+                    const ctx = audioCtxRef.current;
+                    const time = ctx.currentTime + 0.05;
+                    const progress = next / 100;
+
+                    // Sync Frequencies
+                    if (oscRef.current) {
+                        const baseFreq = 50 + (progress * 250); // 50 -> 300Hz
+                        oscRef.current.frequency.exponentialRampToValueAtTime(baseFreq, time);
+                        if (subRef.current) {
+                            subRef.current.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, time);
+                        }
+                    }
+
+                    // Sync Filter & Energy
+                    if (filterRef.current) {
+                        const filterFreq = 200 + (progress * 1800); // 200 -> 2000Hz
+                        filterRef.current.frequency.exponentialRampToValueAtTime(filterFreq, time);
+                        filterRef.current.Q.exponentialRampToValueAtTime(1 + (progress * 12), time);
+                    }
+
+                    // Sync Noise Energy
+                    if (noiseRef.current) {
+                        noiseRef.current.filter.frequency.exponentialRampToValueAtTime(500 + (progress * 3000), time);
+                        noiseRef.current.gain.gain.linearRampToValueAtTime(0.02 + (progress * 0.08), time);
+                    }
+                }
+
+                if (next >= 100) {
                     clearInterval(interval);
-                    setTimeout(onComplete, 800);
+
+                    if (gainRef.current && audioCtxRef.current) {
+                        const ctx = audioCtxRef.current;
+                        gainRef.current.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+
+                        // Victory / Completion Chime (Tiered)
+                        [880, 1320, 1760].forEach((f, i) => {
+                            const chime = ctx.createOscillator();
+                            const cGain = ctx.createGain();
+                            chime.type = 'sine';
+                            chime.frequency.setValueAtTime(f, ctx.currentTime + 0.1);
+                            cGain.gain.setValueAtTime(0.1, ctx.currentTime + 0.1);
+                            cGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6 + (i * 0.2));
+                            chime.connect(cGain);
+                            cGain.connect(ctx.destination);
+                            chime.start(ctx.currentTime + 0.1);
+                            chime.stop(ctx.currentTime + 0.9 + (i * 0.2));
+                        });
+                    }
+
+                    setTimeout(onComplete, 1400);
                     return 100;
                 }
-                return prev + 2;
+                return next;
             });
         }, 30);
-        return () => clearInterval(interval);
+
+        return () => {
+            clearInterval(interval);
+            [oscRef, subRef].forEach(ref => {
+                if (ref.current) {
+                    try { ref.current.stop(); ref.current.disconnect(); } catch (e) { }
+                }
+            });
+            if (noiseRef.current) {
+                try { noiseRef.current.source.stop(); noiseRef.current.source.disconnect(); } catch (e) { }
+            }
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+                audioCtxRef.current.close().catch(() => { });
+            }
+        };
     }, [onComplete]);
 
     // SVG Progress Ring Constants

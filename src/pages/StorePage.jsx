@@ -14,6 +14,28 @@ const stripHtml = (html) => {
         .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').trim();
 };
 
+const getProductDescriptionRaw = (product, fullData = {}) => {
+    return fullData.description || product.description || product.short_description || product.instructions || '';
+};
+
+const getProductDescription = (product, fullData = {}) => {
+    const raw = getProductDescriptionRaw(product, fullData);
+    const stripped = stripHtml(raw);
+    if (stripped.length > 2) return stripped;
+
+    // Fallback to variant descriptions or instructions
+    const variants = fullData.variants || product.variants || [];
+    for (const v of variants) {
+        const vdesc = v.description || v.instructions;
+        const vstripped = stripHtml(vdesc);
+        if (vstripped.length > 2) {
+            return vstripped;
+        }
+    }
+
+    return 'Premium product with advanced features. View plans for more details.';
+};
+
 const GROUP_ICONS = {
     default: '🎮', 'rainbow': '🌈', 'r6': '🎯', 'siege': '🎯',
     'apex': '🔵', 'fortnite': '🏆', 'valorant': '🟥',
@@ -37,16 +59,21 @@ const ProductModal = ({ product, description, onClose }) => {
     const handleCheckout = async () => {
         if (!selectedVariant || checkingOut) return;
         setCheckingOut(true);
-        // Fallback: mysellauth product page
-        const slug = product.path || product.slug || product.id;
-        const fallbackUrl = `https://metacheat.mysellauth.com/product/${slug}?variant=${selectedVariant.id}`;
+
+        const variantId = selectedVariant.id;
+        const productId = product.id;
+
+        // Direct Cart Link Fallback (Skipping product page)
+        const cartJson = JSON.stringify([{ productId: Number(productId), variantId: Number(variantId), quantity: 1 }]);
+        const checkoutFallback = `https://metacheat.mysellauth.com/checkout?cart=${encodeURIComponent(cartJson)}`;
+
         try {
             const res = await fetch('/api/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    productId: product.id,
-                    variantId: selectedVariant.id
+                    productId: productId,
+                    variantId: variantId
                 })
             });
 
@@ -55,12 +82,12 @@ const ProductModal = ({ product, description, onClose }) => {
             if (res.ok && data.url) {
                 window.location.href = data.url;
             } else {
-                console.error("Direct checkout failed:", data.error);
-                window.location.href = fallbackUrl;
+                console.warn("Direct checkout API failed:", data.error || data);
+                alert("Failed to initiate direct checkout. Please try again or contact support.");
             }
         } catch (err) {
             console.error("Fetch error during checkout:", err);
-            window.location.href = fallbackUrl;
+            alert("Connection error. Please check your network.");
         } finally {
             setCheckingOut(false);
         }
@@ -106,10 +133,11 @@ const ProductModal = ({ product, description, onClose }) => {
 
                     {/* Title */}
                     <div>
-                        <h2 className="text-3xl font-black uppercase tracking-tighter italic mb-2">{product.name}</h2>
-                        {description && (
-                            <p className="text-muted text-sm leading-relaxed font-medium">{description}</p>
-                        )}
+                        <h2 className="text-3xl font-black uppercase tracking-tighter italic mb-3">{product.name}</h2>
+                        <div
+                            className="description-container text-white text-sm leading-relaxed font-medium space-y-2 max-w-none min-h-[50px] border border-red-500/20 p-2 rounded-xl"
+                            dangerouslySetInnerHTML={{ __html: description || '<p class="text-red-500">No description found in data.</p>' }}
+                        />
                     </div>
 
                     {/* Plan Selector */}
@@ -187,10 +215,15 @@ const StorePage = () => {
                 SellAuth.getGroups()
             ]);
 
-            const structuredGroups = groupsData.map(group => ({
-                ...group,
-                products: productsData.filter(p => String(p.group_id) === String(group.id))
-            })).filter(g => g.products.length > 0);
+            const structuredGroups = groupsData.map(group => {
+                const groupIdsToMatch = group.mergedIds ? [...group.mergedIds, group.id] : [group.id];
+                return {
+                    ...group,
+                    products: productsData.filter(p =>
+                        groupIdsToMatch.includes(Number(p.group_id)) || groupIdsToMatch.includes(String(p.group_id))
+                    )
+                };
+            }).filter(g => g.products.length > 0);
 
             const groupedIds = new Set(structuredGroups.flatMap(g => g.products.map(p => p.id)));
             const soloProducts = productsData.filter(p => !groupedIds.has(p.id));
@@ -204,21 +237,7 @@ const StorePage = () => {
         fetchData();
     }, []);
 
-    // Fetch full product details (high-fidelity variants/names) when a category is opened
-    useEffect(() => {
-        if (!activeGroupId || groups.length === 0) return;
-        const group = groups.find(g => String(g.id) === String(activeGroupId));
-        if (!group) return;
-        const toFetch = group.products.filter(p => !(p.id in fullProducts));
-        if (toFetch.length === 0) return;
-        Promise.all(
-            toFetch.map(p => SellAuth.getProductDetails(p.id).then(d => d ? { id: p.id, data: d } : null))
-        ).then(results => {
-            const map = {};
-            results.forEach(r => { if (r) map[r.id] = r.data; });
-            setFullProducts(prev => ({ ...prev, ...map }));
-        });
-    }, [activeGroupId, groups]);
+    // No extra fetching needed because of aggressive backend sync
 
     const activeGroup = groups.find(g => String(g.id) === String(activeGroupId));
     const displayProducts = activeGroup ? activeGroup.products : [];
@@ -318,7 +337,7 @@ const StorePage = () => {
                                     const p = parseFloat(v.price);
                                     return p < min ? p : min;
                                 }, Infinity);
-                                const desc = stripHtml(fullData.description || product.description);
+                                const desc = getProductDescription(product, fullData);
 
                                 return (
                                     <div
@@ -377,7 +396,7 @@ const StorePage = () => {
                     return (
                         <ProductModal
                             product={fullData}
-                            description={stripHtml(fullData.description || modalProduct.description)}
+                            description={getProductDescriptionRaw(modalProduct, fullData) || getProductDescription(modalProduct, fullData)}
                             onClose={() => setModalProduct(null)}
                         />
                     );

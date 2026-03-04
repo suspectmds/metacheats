@@ -5,6 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
@@ -19,7 +21,36 @@ app.use(express.json());
 
 // File-based cache for simplicity in local dev
 const CACHE_FILE = path.join(__dirname, '.sellauth_cache.json');
+const USERS_FILE = path.join(__dirname, 'users.json');
 const CACHE_DURATION = 300000; // 5 Minutes
+const JWT_SECRET = process.env.JWT_SECRET || 'metacheats-premium-security-2026';
+
+function getUsers() {
+    try {
+        if (fs.existsSync(USERS_FILE)) {
+            return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+        }
+    } catch (e) { }
+    return [];
+}
+
+function saveUsers(users) {
+    try {
+        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+    } catch (e) { }
+}
+
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
 
 function getCachedData() {
     try {
@@ -75,28 +106,37 @@ app.get('/api/products', async (req, res) => {
             const shopGroups = gRes.data.data || gRes.data.groups || [];
             const shopProducts = pRes.data.data || pRes.data.products || [];
 
-            // Deep Sync: Detect missing IDs from groups not in main list
-            const existingIds = new Set(shopProducts.map(p => p.id));
-            const missingIds = [];
-            shopGroups.forEach(g => {
-                (g.products || []).forEach(gp => {
-                    if (!existingIds.has(gp.id)) {
-                        missingIds.push(gp.id);
-                        existingIds.add(gp.id);
-                    }
-                });
-            });
+            // Aggressive Sync: Fetch full details for ALL products to ensure descriptions are present
+            const allIds = [...new Set([
+                ...shopProducts.map(p => p.id),
+                ...shopGroups.flatMap(g => (g.products || []).map(gp => gp.id))
+            ])];
 
-            if (missingIds.length > 0) {
-                console.log(`[SYNC] Deep sync: Fetching ${missingIds.length} missing products...`);
-                for (const id of missingIds) {
-                    try {
-                        const detail = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${id}`, {
-                            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-                        });
-                        if (detail.data) shopProducts.push(detail.data);
-                    } catch (e) { console.error(`Failed to fetch ${id}:`, e.message); }
+            if (allIds.length > 0) {
+                console.log(`[SYNC] Fully Aggressive: Fetching ${allIds.length} products to capture complete details...`);
+                // Batch fetch to speed up sync while respecting potential rate limits
+                const BATCH_SIZE = 5;
+                const updatedProducts = [];
+
+                for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
+                    const batch = allIds.slice(i, i + BATCH_SIZE);
+                    const batchResults = await Promise.all(batch.map(async (id) => {
+                        try {
+                            const detail = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${id}`, {
+                                headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
+                                timeout: 10000
+                            });
+                            return detail.data.data || detail.data;
+                        } catch (e) {
+                            console.error(`Failed to fetch ${id}:`, e.message);
+                            return shopProducts.find(p => p.id === id);
+                        }
+                    }));
+                    updatedProducts.push(...batchResults.filter(Boolean));
                 }
+
+                shopProducts.length = 0;
+                shopProducts.push(...updatedProducts);
             }
 
             allGroups.push(...shopGroups);
@@ -123,11 +163,34 @@ app.get('/api/products', async (req, res) => {
             }
         });
 
+        // Robust Description Consolidation
+        const stripHtml = (html) => {
+            if (!html) return '';
+            return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        };
+
+        const finalProducts = allProductsFlat.map(p => {
+            let desc = p.description || p.short_description || p.instructions;
+
+            // If main source is still missing/empty, check variants
+            if (!desc || stripHtml(desc).length < 2) {
+                const variants = p.variants || [];
+                for (const v of variants) {
+                    const candidate = v.description || v.instructions;
+                    if (candidate && stripHtml(candidate).length > 2) {
+                        desc = candidate;
+                        break;
+                    }
+                }
+            }
+            return { ...p, description: desc };
+        });
+
         const finalGroups = Array.from(mergedMap.values());
-        const finalData = { groups: finalGroups, products: allProductsFlat };
+        const finalData = { groups: finalGroups, products: finalProducts };
 
         setCachedData(finalData);
-        console.log(`[SYNC] Success. Cached ${finalGroups.length} groups.`);
+        console.log(`[SYNC] Success. Cached ${finalGroups.length} groups and ${finalProducts.length} products with consolidated descriptions.`);
         res.json(finalData);
 
     } catch (error) {
@@ -140,23 +203,32 @@ app.get('/api/products', async (req, res) => {
 // High-fidelity Product Detail Handler
 app.get('/api/product-detail/:id', async (req, res) => {
     const API_KEY = process.env.SELLAUTH_API_KEY;
-    const SHOP_ID = (process.env.SELLAUTH_SHOP_ID || '').split(',')[0].trim();
+    const SHOP_ID_CONFIG = process.env.SELLAUTH_SHOP_ID;
+    const SHOP_IDS = (SHOP_ID_CONFIG || '').split(',').map(id => id.trim()).filter(id => id);
     const productId = req.params.id;
 
-    if (!API_KEY || !SHOP_ID) {
+    if (!API_KEY || SHOP_IDS.length === 0) {
         return res.status(500).json({ error: "Missing config" });
     }
 
-    try {
-        const response = await axios.get(`https://api.sellauth.com/v1/shops/${SHOP_ID}/products/${productId}`, {
-            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
-            timeout: 10000
-        });
-        res.json(response.data);
-    } catch (error) {
-        console.error(`Detail Handler Error (${productId}):`, error.message);
-        res.status(500).json({ error: "Failed to fetch product details" });
+    // Try each shop until we find the product
+    for (const shopId of SHOP_IDS) {
+        try {
+            const response = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${productId}`, {
+                headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
+                timeout: 5000 // Shorter timeout per shop
+            });
+            const product = response.data.data || response.data;
+            if (product) return res.json(product);
+        } catch (error) {
+            // If not 404, log it, but continue to next shop regardless
+            if (error.response?.status !== 404) {
+                console.error(`Detail Handler Error (Shop ${shopId}, Product ${productId}):`, error.message);
+            }
+        }
     }
+
+    res.status(404).json({ error: "Product not found in any configured shop" });
 });
 
 app.get('/api/reviews', async (req, res) => {
@@ -187,6 +259,76 @@ app.get('/api/reviews', async (req, res) => {
     } catch (e) {
         console.error('Local server reviews error:', e.message);
         res.status(500).json({ reviews: [] });
+    }
+});
+
+// --- AUTHENTICATION ENDPOINTS ---
+
+app.post('/api/auth/register', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+
+    const users = getUsers();
+    if (users.find(u => u.email === email)) return res.status(400).json({ error: "User already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = { id: Date.now(), email, password: hashedPassword };
+    users.push(newUser);
+    saveUsers(users);
+
+    const token = jwt.sign({ id: newUser.id, email: newUser.email }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: newUser.id, email: newUser.email } });
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    const users = getUsers();
+    const user = users.find(u => u.email === email);
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, email: user.email } });
+});
+
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+    res.json({ user: req.user });
+});
+
+// --- USER ORDER RETRIEVAL ---
+
+app.get('/api/user/orders', authenticateToken, async (req, res) => {
+    const API_KEY = process.env.SELLAUTH_API_KEY;
+    const SHOP_ID_CONFIG = process.env.SELLAUTH_SHOP_ID;
+    const SHOP_ID = (SHOP_ID_CONFIG || '').split(',')[0].trim();
+    const email = req.user.email;
+
+    try {
+        const response = await axios.get(`https://api.sellauth.com/v1/shops/${SHOP_ID}/invoices`, {
+            params: { email },
+            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
+        });
+
+        const invoices = response.data.data || [];
+        const orders = invoices.map(inv => ({
+            id: inv.id,
+            status: inv.status,
+            total: inv.total,
+            created_at: inv.created_at,
+            items: (inv.items || []).map(item => ({
+                product_name: item.product?.name || "Premium Product",
+                variant_name: item.variant?.name || "Standard",
+                quantity: item.quantity,
+                keys: item.delivered_data || []
+            }))
+        }));
+
+        res.json({ orders });
+    } catch (e) {
+        console.error('Local server orders error:', e.message);
+        res.status(500).json({ orders: [] });
     }
 });
 

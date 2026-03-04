@@ -111,5 +111,47 @@ export const SellAuth = {
             console.error('SellAuth Feedbacks Error:', error);
             return [];
         }
+    },
+
+    /**
+     * Authentication & Accounts
+     */
+    register: async (email, password) => {
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            return await response.json();
+        } catch (error) {
+            return { error: 'Network error during registration' };
+        }
+    },
+
+    login: async (email, password) => {
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            return await response.json();
+        } catch (error) {
+            return { error: 'Network error during login' };
+        }
+    },
+
+    getUserOrders: async (token) => {
+        try {
+            const response = await fetch('/api/user/orders', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Failed to fetch orders');
+            return await response.json();
+        } catch (error) {
+            console.error('Fetch Orders Error:', error);
+            return { orders: [] };
+        }
     }
 };

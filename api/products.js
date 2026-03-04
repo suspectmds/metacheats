@@ -16,29 +16,6 @@ export default async function handler(req, res) {
 
     console.log(`[API] Products request received. Refresh: ${req.query?.refresh === 'true'}`);
 
-    const urlParts = req.url.split('/').filter(Boolean);
-    let productId = null;
-    if (urlParts.length > 2) {
-        productId = urlParts[2].split('?')[0];
-    } else if (req.query && req.query.id) {
-        productId = req.query.id;
-    }
-
-    // Handle Product Detail
-    if (productId) {
-        try {
-            const shopId = SHOP_IDS[0];
-            const response = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${productId}`, {
-                headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
-                timeout: 10000
-            });
-            return res.status(200).json(response.data);
-        } catch (error) {
-            console.error(`Detail Fetch Error:`, error.message);
-            return res.status(500).json({ error: "Failed to fetch product details" });
-        }
-    }
-
     // Handle Groups Fetch (with Deep Sync & Merging)
     try {
         const now = Date.now();
@@ -66,35 +43,32 @@ export default async function handler(req, res) {
                 const shopGroups = gRes.data.data || gRes.data.groups || [];
                 const shopProducts = pRes.data.data || pRes.data.products || [];
 
-                // Track missing products found in groups
-                const existingProductIds = new Set(shopProducts.map(p => p.id));
-                const missingProductIds = [];
+                // Fully Aggressive Sync: Fetch full details for ALL products
+                const allProductIds = [...new Set([
+                    ...shopProducts.map(p => p.id),
+                    ...shopGroups.flatMap(group => (group.products || []).map(gp => gp.id))
+                ])];
 
-                shopGroups.forEach(group => {
-                    const groupProds = group.products || [];
-                    groupProds.forEach(gp => {
-                        if (!existingProductIds.has(gp.id)) {
-                            missingProductIds.push(gp.id);
-                            existingProductIds.add(gp.id);
-                        }
-                    });
-                });
-
-                // Deep Sync: Fetch missing products individually
-                if (missingProductIds.length > 0) {
-                    console.log(`[SYNC] Deep sync: Fetching ${missingProductIds.length} missing products...`);
-                    const fetchPromises = missingProductIds.map(id =>
+                if (allProductIds.length > 0) {
+                    console.log(`[SYNC] Fully Aggressive: Fetching ${allProductIds.length} products...`);
+                    const fetchPromises = allProductIds.map(id =>
                         axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${id}`, {
                             headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
                         }).catch(e => {
-                            console.error(`[SYNC] Failed to fetch missing product ${id}:`, e.message);
+                            console.error(`[SYNC] Failed to fetch product ${id}:`, e.message);
                             return null;
                         })
                     );
                     const fetchedDetails = await Promise.all(fetchPromises);
-                    fetchedDetails.forEach(fd => {
-                        if (fd && fd.data) shopProducts.push(fd.data);
-                    });
+
+                    // Filter and map to high-fidelity data
+                    const highFidelityProducts = fetchedDetails
+                        .map(fd => fd?.data?.data || fd?.data)
+                        .filter(Boolean);
+
+                    // Replace shopProducts with high-fidelity versions
+                    shopProducts.length = 0;
+                    shopProducts.push(...highFidelityProducts);
                 }
 
                 allGroups.push(...shopGroups);
@@ -128,14 +102,37 @@ export default async function handler(req, res) {
             }
         });
 
-        const finalGroups = Array.from(mergedGroupsMap.values());
-        const checkerFound = allProductsFlat.some(p => p.id === 632842 || String(p.id) === '632842');
+        // Robust Description Consolidation
+        const stripHtml = (html) => {
+            if (!html) return '';
+            return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        };
 
-        groupsCache = { data: { groups: finalGroups, products: allProductsFlat, checkerFound }, timestamp: now };
-        console.log(`[SYNC] Success. Checker Found: ${checkerFound}. Cached ${finalGroups.length} groups.`);
+        const finalProducts = allProductsFlat.map(p => {
+            let desc = p.description || p.short_description || p.instructions;
+
+            // If main source is still missing/empty, check variants
+            if (!desc || stripHtml(desc).length < 2) {
+                const variants = p.variants || [];
+                for (const v of variants) {
+                    const candidate = v.description || v.instructions;
+                    if (candidate && stripHtml(candidate).length > 2) {
+                        desc = candidate;
+                        break;
+                    }
+                }
+            }
+            return { ...p, description: desc };
+        });
+
+        const finalGroups = Array.from(mergedGroupsMap.values());
+        const checkerFound = finalProducts.some(p => p.id === 632842 || String(p.id) === '632842');
+
+        groupsCache = { data: { groups: finalGroups, products: finalProducts, checkerFound }, timestamp: now };
+        console.log(`[SYNC] Success. Checker Found: ${checkerFound}. Cached ${finalGroups.length} groups and ${finalProducts.length} products.`);
 
         res.setHeader('Cache-Control', 'no-store, max-age=0');
-        res.status(200).json({ groups: finalGroups, products: allProductsFlat, checkerFound });
+        res.status(200).json({ groups: finalGroups, products: finalProducts, checkerFound });
 
     } catch (error) {
         console.error('Core Sync API Error:', error.message);

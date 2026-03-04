@@ -1,59 +1,134 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, LayoutGrid, Info, MessageSquare, Twitter, Instagram, Youtube, CreditCard, ShieldCheck, ChevronDown, Star, Quote } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { LayoutGrid, Info, MessageSquare, Twitter, Instagram, Youtube, CreditCard, ShieldCheck, ChevronDown, Star, Quote, ShoppingCart } from 'lucide-react';
 import { SellAuth } from './lib/sellauth';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import SplashScreen from './components/SplashScreen.jsx';
 import MouseGlow from './components/MouseGlow.jsx';
+import MusicPlayer from './components/MusicPlayer.jsx';
+import StormEffect from './components/StormEffect.jsx';
+import { useAuth } from './AuthContext';
 
 const App = () => {
+    const { user, isAuthenticated } = useAuth();
     const [showSplash, setShowSplash] = useState(true);
     const [currency, setCurrency] = useState('GBP');
     const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
     const [dynamicGroups, setDynamicGroups] = useState([]);
     const [feedbacks, setFeedbacks] = useState([]);
     const [checkoutLoading, setCheckoutLoading] = useState(null);
+    const audioCtxRef = useRef(null);
+
+    // Global click sound effect
+    const playClick = useCallback(() => {
+        try {
+            if (!audioCtxRef.current) {
+                audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const ctx = audioCtxRef.current;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.18, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.12);
+        } catch (e) { }
+    }, []);
+
+    useEffect(() => {
+        const handler = () => playClick();
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, [playClick]);
 
     useEffect(() => {
         const fetchData = async () => {
-            const [products, groups, reviews] = await Promise.all([
-                SellAuth.getProducts(),
-                SellAuth.getGroups(),
-                SellAuth.getFeedbacks()
-            ]);
+            try {
+                const [products, groups, reviews] = await Promise.all([
+                    SellAuth.getProducts(),
+                    SellAuth.getGroups(),
+                    SellAuth.getFeedbacks()
+                ]);
 
-            // Group products by group_id
-            const structured = groups.map(g => ({
-                name: g.name,
-                items: products
-                    .filter(p => String(p.group_id) === String(g.id))
-                    .map(p => ({ id: p.id, name: p.name }))
-            })).filter(g => g.items.length > 0);
+                // Group products by group_id
+                const structuredGroups = groups.map(group => {
+                    const groupIdsToMatch = group.mergedIds ? [...group.mergedIds, group.id] : [group.id];
+                    return {
+                        name: group.name, // Assuming 'name' is still desired for the group
+                        items: products.filter(p =>
+                            groupIdsToMatch.includes(Number(p.group_id)) || groupIdsToMatch.includes(String(p.group_id))
+                        ).map(p => ({ id: p.id, name: p.name })) // Map filtered products to {id, name}
+                    };
+                }).filter(g => g.items && g.items.length > 0);
 
-            // Handle solo products
-            const groupedIds = new Set(structured.flatMap(g => g.items.map(i => i.id)));
-            const solo = products.filter(p => !groupedIds.has(p.id));
-            if (solo.length > 0) {
-                structured.push({
-                    name: 'Miscellaneous',
-                    items: solo.map(p => ({ id: p.id, name: p.name }))
-                });
+
+                // Handle solo products
+                const groupedIds = new Set(structuredGroups.flatMap(g => g.items.map(i => i.id)));
+                const solo = products.filter(p => !groupedIds.has(p.id));
+                if (solo.length > 0) {
+                    structuredGroups.push({
+                        name: 'Miscellaneous',
+                        items: solo.map(p => ({ id: p.id, name: p.name }))
+                    });
+                }
+
+                setDynamicGroups(structuredGroups);
+                setFeedbacks(reviews.length > 0 ? reviews : [
+                    { rating: 5, comment: "Undetected for months. Best support in the scene.", customer_email: "v***@nexus.com" },
+                    { rating: 5, comment: "Supreme performance on R6. Highly recommend.", customer_email: "d***@apex.io" },
+                    { rating: 5, comment: "Fast delivery and easy setup. The guides are a lifesaver.", customer_email: "k***@pulse.net" }
+                ]);
+            } catch (error) {
+                console.error("Critical fetching error in App.jsx:", error);
+                // Fallback to minimal state to prevent crash
+                setDynamicGroups([]);
+                setFeedbacks([
+                    { rating: 5, comment: "Elite performance, always undetected.", customer_email: "v***@nexus.com" }
+                ]);
             }
-
-            setDynamicGroups(structured);
-            setFeedbacks(reviews.length > 0 ? reviews : [
-                { rating: 5, comment: "Undetected for months. Best support in the scene.", customer_email: "v***@nexus.com" },
-                { rating: 5, comment: "Supreme performance on R6. Highly recommend.", customer_email: "d***@apex.io" },
-                { rating: 5, comment: "Fast delivery and easy setup. The guides are a lifesaver.", customer_email: "k***@pulse.net" }
-            ]);
         };
         fetchData();
     }, []);
 
-    const handleQuickPurchase = (productId) => {
+    const handleQuickPurchase = async (productId) => {
+        if (checkoutLoading) return;
         setCheckoutLoading(productId);
-        window.open(`https://metacheats.mysellauth.com/p/${productId}`, '_blank');
-        setTimeout(() => setCheckoutLoading(null), 1500);
+
+        try {
+            // First, fetch product details to get the first variant ID
+            const detail = await SellAuth.getProductDetails(productId);
+            const variantId = detail?.variants?.[0]?.id;
+
+            if (variantId) {
+                // Try to create a direct checkout session
+                const res = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productId, variantId })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.url) {
+                    window.location.href = data.url;
+                } else {
+                    console.error("Direct checkout API failed:", data.error || data);
+                    alert("Direct checkout unavailable. Please browse our store.");
+                }
+            } else {
+                alert("This product is currently out of stock or unavailable.");
+            }
+        } catch (err) {
+            console.error("Quick purchase error:", err);
+            alert("Connection error. Please try again.");
+        } finally {
+            setTimeout(() => setCheckoutLoading(null), 1000);
+        }
     };
 
     return (
@@ -72,6 +147,7 @@ const App = () => {
                     transition={{ duration: 0.5 }}
                     className="min-h-screen bg-transparent"
                 >
+                    <StormEffect />
                     {/* Premium Navbar */}
                     <nav className="fixed top-0 left-0 right-0 z-50 glass h-20 px-6 flex items-center justify-between border-b border-white/5">
                         {/* Brand/Logo */}
@@ -84,20 +160,22 @@ const App = () => {
                             <a href="/" className="hover:text-accent hover:text-glow transition-all">Home</a>
                             <Link to="/store" className="hover:text-accent hover:text-glow transition-all">Store</Link>
                             <a href="#reviews" className="hover:text-accent hover:text-glow transition-all">Reviews</a>
-                            <a href="#" className="hover:text-accent hover:text-glow transition-all">Discord</a>
+                            <a href="https://discord.gg/metacheats" target="_blank" rel="noopener noreferrer" className="hover:text-accent hover:text-glow transition-all">Discord</a>
                         </div>
 
                         {/* Right Side Actions */}
                         <div className="flex items-center justify-end gap-6 w-1/4">
                             <div className="hidden lg:flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em]">
-                                <a href="#" className="text-muted hover:text-white transition-colors">Login</a>
+                                {isAuthenticated ? (
+                                    <Link to="/account" className="flex items-center gap-2 text-accent hover:text-white transition-all">
+                                        <ShieldCheck size={14} /> My Account
+                                    </Link>
+                                ) : (
+                                    <Link to="/login" className="text-muted hover:text-white transition-colors">Login</Link>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <button className="relative p-2 text-muted hover:text-accent hover:text-glow transition-all">
-                                    <ShoppingCart size={20} />
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent text-[9px] text-white flex items-center justify-center rounded-sm font-black accent-glow">0</span>
-                                </button>
 
                                 {/* Currency Selector */}
                                 <div className="relative">
@@ -224,9 +302,9 @@ const App = () => {
                         {/* Master Layout: Product Information Grid */}
                         <div className="glass p-12 md:p-16 rounded-[4rem] border border-white/10 relative overflow-hidden shadow-2xl">
                             <div className="absolute inset-0 bg-gradient-to-t from-accent/5 to-transparent pointer-events-none" />
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 relative z-10">
-                                {dynamicGroups.slice(0, 3).map((group, gIdx) => (
-                                    <div key={gIdx} className={gIdx > 0 ? "pt-14 lg:pt-14" : ""}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12 relative z-10">
+                                {dynamicGroups.map((group, gIdx) => (
+                                    <div key={gIdx} className="pt-0">
                                         {gIdx === 0 && (
                                             <h4 className="text-white font-bold mb-8 flex items-center gap-2">
                                                 <LayoutGrid size={20} className="text-accent drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
@@ -312,6 +390,7 @@ const App = () => {
                     </footer>
                 </motion.div>
             )}
+            <MusicPlayer />
         </div>
     );
 };
