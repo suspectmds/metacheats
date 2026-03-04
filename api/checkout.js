@@ -6,53 +6,49 @@ export default async function handler(req, res) {
     }
 
     const { productId, variantId } = req.body;
-
-    if (!productId) {
-        return res.status(400).json({ error: 'Product ID is required' });
+    if (!productId || !variantId) {
+        return res.status(400).json({ error: "Missing product or variant ID" });
     }
 
-    const shopId = '169969';
-    const apiKey = '5561865|TOancIGgSuESgevxAri1HQKVpysGfjfrrXKrKl3Laed0e7f8';
+    const API_KEY = process.env.SELLAUTH_API_KEY;
+    const SHOP_ID_CONFIG = process.env.SELLAUTH_SHOP_ID;
+    const SHOP_IDS = (SHOP_ID_CONFIG || '').split(',').map(id => id.trim()).filter(id => id);
 
-    if (!shopId || !apiKey) {
-        return res.status(500).json({ error: 'Server configuration missing' });
+    if (SHOP_IDS.length === 0) {
+        return res.status(500).json({ error: "No shops configured" });
     }
 
-    try {
-        const payload = {
-            cart: [
-                {
-                    productId: productId,
-                    quantity: 1
-                }
-            ]
-        };
+    let lastError = null;
 
-        if (variantId) {
-            payload.cart[0].variantId = variantId;
-        }
-
-        const response = await axios.post(
-            `https://api.sellauth.com/v1/shops/${shopId}/checkout`,
-            payload,
-            {
+    // Try each shop until success or we run out
+    for (const shopId of SHOP_IDS) {
+        try {
+            console.log(`[CHECKOUT] Attempting session for Shop ${shopId}...`);
+            const response = await axios.post(`https://api.sellauth.com/v1/shops/${shopId}/checkout`, {
+                cart: [{ productId: Number(productId), variantId: Number(variantId), quantity: 1 }]
+            }, {
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
+                    'Authorization': `Bearer ${API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                timeout: 5000
+            });
+
+            const data = response.data.data || response.data;
+            const checkoutUrl = data.url || data.checkout_url || data.redirect_url;
+
+            if (checkoutUrl) {
+                console.log(`[CHECKOUT] Success on Shop ${shopId}: ${checkoutUrl}`);
+                return res.status(200).json({ url: checkoutUrl });
             }
-        );
-
-        if (response.data && response.data.url) {
-            return res.status(200).json({ url: response.data.url });
-        } else {
-            return res.status(500).json({ error: 'Failed to generate checkout URL', details: response.data });
+        } catch (e) {
+            lastError = e.response?.data || e.message;
+            console.warn(`[CHECKOUT] Trial on Shop ${shopId} failed:`, lastError);
+            // Continue to next shop...
         }
-
-    } catch (error) {
-        console.error('Checkout API Error:', error.response?.data || error.message);
-        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to create checkout session';
-        return res.status(error.response?.status || 500).json({ error: errorMessage });
     }
+
+    console.error('[CHECKOUT] All shops failed:', lastError);
+    return res.status(500).json({ error: "Failed to create checkout session across all shops", details: lastError });
 }

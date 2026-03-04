@@ -1,222 +1,241 @@
 import express from 'express';
-import bodyParser from 'body-parser';
-import crypto from 'crypto';
 import axios from 'axios';
-import * as dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-// Middlewares
-app.use(bodyParser.json());
+app.use(cors());
+app.use(express.json());
 
-// SELLAUTH CONFIGURATION
-const SELLAUTH_API_KEY = process.env.SELLAUTH_API_KEY;
-const SHOP_ID_CONFIG = process.env.SELLAUTH_SHOP_ID;
-const SHOP_IDS = (SHOP_ID_CONFIG || '').split(',').map(id => id.trim()).filter(id => id);
+// File-based cache for simplicity in local dev
+const CACHE_FILE = path.join(__dirname, '.sellauth_cache.json');
+const CACHE_DURATION = 300000; // 5 Minutes
 
-// Persistent File Cache Configuration
-const CACHE_FILE = path.join(process.cwd(), '.sellauth_cache.json');
-const CACHE_DURATION = 3600000; // 1 Hour - CRITICAL: Respecting SellAuth Rate Limits
-
-const getCachedData = () => {
+function getCachedData() {
     try {
         if (fs.existsSync(CACHE_FILE)) {
-            const content = fs.readFileSync(CACHE_FILE, 'utf-8');
-            return JSON.parse(content);
+            const data = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+            return data;
         }
-    } catch (e) { console.error('Cache Read Error:', e.message); }
+    } catch (e) { }
     return null;
-};
+}
 
-const setCachedData = (data) => {
+function setCachedData(data) {
     try {
-        fs.writeFileSync(CACHE_FILE, JSON.stringify({ data, timestamp: Date.now() }), 'utf-8');
-    } catch (e) { console.error('Cache Write Error:', e.message); }
-};
+        fs.writeFileSync(CACHE_FILE, JSON.stringify({
+            data,
+            timestamp: Date.now()
+        }));
+    } catch (e) { }
+}
 
-// Balance Check Endpoint
-app.get('/api/balance', (req, res) => {
-    res.json({ balance: 240.25 });
-});
-
-// Products Proxy
 app.get('/api/products', async (req, res) => {
+    const API_KEY = process.env.SELLAUTH_API_KEY;
+    const SHOP_ID_CONFIG = process.env.SELLAUTH_SHOP_ID;
+    const SHOP_IDS = (SHOP_ID_CONFIG || '').split(',').map(id => id.trim()).filter(id => id);
+
+    if (!API_KEY || SHOP_IDS.length === 0) {
+        return res.status(500).json({ error: "Missing config" });
+    }
+
+    const now = Date.now();
+    const cached = getCachedData();
+    if (cached && (now - cached.timestamp < CACHE_DURATION) && req.query?.refresh !== 'true') {
+        console.log('[CACHE] Returning cached products (Server)');
+        return res.json({ ...cached.data, cached: true });
+    }
+
+    console.log('[SYNC] Starting high-fidelity sync (Server)...');
+    let allGroups = [];
+    let allProductsFlat = [];
+
     try {
-        if (req.query.id) {
-            const shopId = SHOP_IDS[0];
-            try {
-                const detailRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${req.query.id}`, {
-                    headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` }
-                });
-                return res.json(detailRes.data);
-            } catch (err) {
-                console.error(`SellAuth Product [${req.query.id}] Fetch Error:`, err.message);
-                return res.status(500).json({ error: "Failed to fetch product details" });
-            }
-        }
-
-        const cached = getCachedData();
-        const now = Date.now();
-
-        if (cached && (now - cached.timestamp < CACHE_DURATION)) {
-            return res.json({ groups: cached.data });
-        }
-
-        let allGroups = [];
         for (const shopId of SHOP_IDS) {
-            console.log(`[SYNC] Starting fetch for Shop ${shopId}`);
+            console.log(`[SYNC] Fetching Shop ${shopId}...`);
+            const [gRes, pRes] = await Promise.all([
+                axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
+                    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
+                }),
+                axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products?per_page=100`, {
+                    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
+                })
+            ]);
 
-            const gRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/groups`, {
-                headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
-                timeout: 10000
+            const shopGroups = gRes.data.data || gRes.data.groups || [];
+            const shopProducts = pRes.data.data || pRes.data.products || [];
+
+            // Deep Sync: Detect missing IDs from groups not in main list
+            const existingIds = new Set(shopProducts.map(p => p.id));
+            const missingIds = [];
+            shopGroups.forEach(g => {
+                (g.products || []).forEach(gp => {
+                    if (!existingIds.has(gp.id)) {
+                        missingIds.push(gp.id);
+                        existingIds.add(gp.id);
+                    }
+                });
             });
-            const groups = gRes.data.data || [];
 
-            const pRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products?per_page=100`, {
-                headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
-                timeout: 10000
-            });
-            const productsShort = pRes.data.data || [];
-
-            console.log(`[SYNC] Fetching details for ${productsShort.length} products...`);
-            const detailedProducts = [];
-            for (const p of productsShort) {
-                try {
-                    const detailRes = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${p.id}`, {
-                        headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` },
-                        timeout: 10000
-                    });
-                    const fullP = detailRes.data;
-                    detailedProducts.push(fullP);
-                    await new Promise(r => setTimeout(r, 600)); // Rate limit safety
-                } catch (e) {
-                    console.error(`[SYNC] Failed ${p.id}: ${e.message}`);
-                    detailedProducts.push(p);
+            if (missingIds.length > 0) {
+                console.log(`[SYNC] Deep sync: Fetching ${missingIds.length} missing products...`);
+                for (const id of missingIds) {
+                    try {
+                        const detail = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${id}`, {
+                            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
+                        });
+                        if (detail.data) shopProducts.push(detail.data);
+                    } catch (e) { console.error(`Failed to fetch ${id}:`, e.message); }
                 }
             }
 
-            groups.forEach(group => {
-                group.products = detailedProducts.filter(p => String(p.group_id) === String(group.id));
-            });
-
-            allGroups = [...allGroups, ...groups];
+            allGroups.push(...shopGroups);
+            allProductsFlat.push(...shopProducts);
         }
 
-        if (allGroups.length > 0) {
-            console.log(`[SYNC] Success. Caching ${allGroups.length} groups.`);
-            setCachedData(allGroups);
-        }
-        res.json({ groups: allGroups });
+        // Merge groups by name
+        const mergedMap = new Map();
+        allGroups.forEach(g => {
+            const name = g.name.trim();
+            if (mergedMap.has(name)) {
+                const existing = mergedMap.get(name);
+                existing.mergedIds = existing.mergedIds || [existing.id];
+                existing.mergedIds.push(g.id);
+                const combined = [...(existing.products || []), ...(g.products || [])];
+                const seen = new Set();
+                existing.products = combined.filter(p => {
+                    if (seen.has(p.id)) return false;
+                    seen.add(p.id);
+                    return true;
+                });
+            } else {
+                mergedMap.set(name, { ...g, mergedIds: [g.id] });
+            }
+        });
+
+        const finalGroups = Array.from(mergedMap.values());
+        const finalData = { groups: finalGroups, products: allProductsFlat };
+
+        setCachedData(finalData);
+        console.log(`[SYNC] Success. Cached ${finalGroups.length} groups.`);
+        res.json(finalData);
+
     } catch (error) {
-        console.error('[SYNC] Global Error:', error.message);
-        const cached = getCachedData();
-        if (cached && cached.data) {
-            return res.json({ groups: cached.data, isStale: true });
-        }
-
-        res.status(429).json({ error: "Rate limit active." });
+        console.error('Server sync error:', error.message);
+        if (cached) return res.json(cached.data);
+        res.status(500).json({ error: "Failed to sync" });
     }
 });
 
-// Specific Product Proxy (for Variants/Descriptions)
-app.get('/api/products/:productId', async (req, res) => {
+// High-fidelity Product Detail Handler
+app.get('/api/product-detail/:id', async (req, res) => {
+    const API_KEY = process.env.SELLAUTH_API_KEY;
+    const SHOP_ID = (process.env.SELLAUTH_SHOP_ID || '').split(',')[0].trim();
+    const productId = req.params.id;
+
+    if (!API_KEY || !SHOP_ID) {
+        return res.status(500).json({ error: "Missing config" });
+    }
+
     try {
-        const { productId } = req.params;
-        // Search through shop IDs for the product (using the first one for now as it's typically a 1:1 map in config)
-        const shopId = SHOP_IDS[0];
-
-        const response = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/products/${productId}`, {
-            headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` }
+        const response = await axios.get(`https://api.sellauth.com/v1/shops/${SHOP_ID}/products/${productId}`, {
+            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
+            timeout: 10000
         });
-
         res.json(response.data);
     } catch (error) {
-        console.error(`SellAuth Product [${req.params.productId}] Fetch Error:`, error.message);
+        console.error(`Detail Handler Error (${productId}):`, error.message);
         res.status(500).json({ error: "Failed to fetch product details" });
     }
 });
 
-// Reviews Proxy
 app.get('/api/reviews', async (req, res) => {
+    const API_KEY = process.env.SELLAUTH_API_KEY;
+    const SHOP_ID = (process.env.SELLAUTH_SHOP_ID || '').split(',')[0].trim();
     try {
-        let allReviews = [];
-        for (const shopId of SHOP_IDS) {
-            const resp = await axios.get(`https://api.sellauth.com/v1/shops/${shopId}/feedbacks`, {
-                headers: { 'Authorization': `Bearer ${SELLAUTH_API_KEY}` }
-            });
-            const mapped = (resp.data.data || []).map(f => {
-                const m = {
-                    user: f.invoice?.email ? f.invoice.email.split('@')[0] : (f.email ? f.email.split('@')[0] : "Verified User"),
-                    date: new Date(f.created_at).toLocaleDateString(),
-                    rating: f.rating || 5,
-                    comment: f.message || f.comment || f.feedback || f.review || "No comment provided.",
-                    product: f.invoice?.items?.[0]?.product?.name || f.order?.product?.name || f.product?.name || "Premium Product"
-                };
-                return m;
-            });
-            allReviews = [...allReviews, ...mapped];
-        }
-        res.json({ reviews: allReviews });
-    } catch (error) {
-        res.status(500).json({ error: "Failed to fetch reviews" });
+        const response = await axios.get(`https://api.sellauth.com/v1/shops/${SHOP_ID}/feedbacks?per_page=100`, {
+            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
+        });
+
+        const feedbacks = response.data.data || [];
+
+        // Use high-fidelity mapping to ensure all comment/user variants are caught
+        const mapped = feedbacks.map(f => {
+            const product = f.invoice?.items?.[0]?.product?.name || f.order?.product?.name || f.product?.name;
+            const hasRealMessage = f.message && f.message.trim().length > 0;
+
+            return {
+                user: f.invoice?.email ? f.invoice.email.split('@')[0] : (f.email ? f.email.split('@')[0] : "Verified Customer"),
+                rating: f.rating || 5,
+                comment: hasRealMessage ? f.message : (product ? `Verified purchase: ${product}` : "Premium service, highly recommend!"),
+                created_at: f.created_at,
+                is_automatic: f.is_automatic
+            };
+        });
+
+        res.json({ reviews: mapped });
+    } catch (e) {
+        console.error('Local server reviews error:', e.message);
+        res.status(500).json({ reviews: [] });
     }
 });
 
-// Checkout Proxy (Local Development)
 app.post('/api/checkout', async (req, res) => {
-    try {
-        const { productId, variantId } = req.body;
-        if (!productId) {
-            return res.status(400).json({ error: 'Product ID is required' });
-        }
+    const { productId, variantId } = req.body;
+    if (!productId || !variantId) return res.status(400).json({ error: "Missing product or variant ID" });
 
-        const shopId = SHOP_IDS[0];
-        const payload = {
-            cart: [
-                {
-                    productId: productId,
-                    quantity: 1
-                }
-            ]
-        };
+    const API_KEY = process.env.SELLAUTH_API_KEY;
+    const SHOP_ID_CONFIG = process.env.SELLAUTH_SHOP_ID;
+    const SHOP_IDS = (SHOP_ID_CONFIG || '').split(',').map(id => id.trim()).filter(id => id);
 
-        if (variantId) {
-            payload.cart[0].variantId = variantId;
-        }
-
-        const response = await axios.post(
-            `https://api.sellauth.com/v1/shops/${shopId}/checkout`,
-            payload,
-            {
-                headers: {
-                    'Authorization': `Bearer ${SELLAUTH_API_KEY}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        if (response.data && response.data.url) {
-            res.json({ url: response.data.url });
-        } else {
-            res.status(500).json({ error: 'Failed to generate checkout URL', details: response.data });
-        }
-    } catch (error) {
-        console.error('Checkout Local API Error:', error.response?.data || error.message);
-        res.status(500).json({ error: "Failed to create checkout session" });
+    if (SHOP_IDS.length === 0) {
+        return res.status(500).json({ error: "No shops configured" });
     }
+
+    let lastError = null;
+
+    // Try each shop until success or we run out
+    for (const shopId of SHOP_IDS) {
+        try {
+            console.log(`[CHECKOUT] Attempting session for Shop ${shopId}...`);
+            const response = await axios.post(`https://api.sellauth.com/v1/shops/${shopId}/checkout`, {
+                cart: [{ productId: Number(productId), variantId: Number(variantId), quantity: 1 }]
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                timeout: 5000
+            });
+
+            const data = response.data.data || response.data;
+            const checkoutUrl = data.url || data.checkout_url || data.redirect_url;
+
+            if (checkoutUrl) {
+                console.log(`[CHECKOUT] Success on Shop ${shopId}: ${checkoutUrl}`);
+                return res.json({ url: checkoutUrl });
+            }
+        } catch (e) {
+            lastError = e.response?.data || e.message;
+            console.warn(`[CHECKOUT] Trial on Shop ${shopId} failed:`, lastError);
+        }
+    }
+
+    console.error('[CHECKOUT] All shops failed:', lastError);
+    res.status(500).json({ error: "Failed to create checkout session across all shops", details: lastError });
 });
 
-// SellAuth Webhook Receiver
-app.post('/api/webhook', (req, res) => {
-    res.status(200).send('Webhook Received');
-});
-
-// Start the server
 app.listen(PORT, () => {
     console.log(`MetaCheats Backend running on port ${PORT}`);
 });

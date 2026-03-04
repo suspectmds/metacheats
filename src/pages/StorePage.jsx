@@ -135,7 +135,7 @@ const ProductModal = ({ product, description, onClose }) => {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-black uppercase tracking-wider">
-                                                        {v.title || `Plan ${product.variants.indexOf(v) + 1}`}
+                                                        {v.name || v.title || v.label || `Plan ${product.variants.indexOf(v) + 1}`}
                                                     </p>
                                                     {stock != null && stock < 999990 && (
                                                         <p className="text-[10px] text-muted uppercase tracking-widest">{stock} in stock</p>
@@ -176,7 +176,7 @@ const StorePage = () => {
 
     const [loading, setLoading] = useState(true);
     const [groups, setGroups] = useState([]);
-    const [productDescriptions, setProductDescriptions] = useState({});
+    const [fullProducts, setFullProducts] = useState({}); // Stores high-fidelity product data (with names/full variants)
     const [modalProduct, setModalProduct] = useState(null);
 
     useEffect(() => {
@@ -204,19 +204,19 @@ const StorePage = () => {
         fetchData();
     }, []);
 
-    // Fetch descriptions when a category is opened
+    // Fetch full product details (high-fidelity variants/names) when a category is opened
     useEffect(() => {
         if (!activeGroupId || groups.length === 0) return;
         const group = groups.find(g => String(g.id) === String(activeGroupId));
         if (!group) return;
-        const toFetch = group.products.filter(p => !(p.id in productDescriptions));
+        const toFetch = group.products.filter(p => !(p.id in fullProducts));
         if (toFetch.length === 0) return;
         Promise.all(
-            toFetch.map(p => SellAuth.getProductDetails(p.id).then(d => ({ id: p.id, desc: d?.description || '' })))
+            toFetch.map(p => SellAuth.getProductDetails(p.id).then(d => d ? { id: p.id, data: d } : null))
         ).then(results => {
             const map = {};
-            results.forEach(r => { map[r.id] = r.desc; });
-            setProductDescriptions(prev => ({ ...prev, ...map }));
+            results.forEach(r => { if (r) map[r.id] = r.data; });
+            setFullProducts(prev => ({ ...prev, ...map }));
         });
     }, [activeGroupId, groups]);
 
@@ -311,12 +311,14 @@ const StorePage = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {displayProducts.map((product) => {
+                                const fullData = fullProducts[product.id] || product;
                                 const image = product.images?.[0]?.url || product.image_url || null;
-                                const lowestPrice = product.variants?.reduce((min, v) => {
+                                const variants = fullData.variants || product.variants || [];
+                                const lowestPrice = variants.reduce((min, v) => {
                                     const p = parseFloat(v.price);
                                     return p < min ? p : min;
                                 }, Infinity);
-                                const desc = stripHtml(productDescriptions[product.id] || product.description);
+                                const desc = stripHtml(fullData.description || product.description);
 
                                 return (
                                     <div
@@ -353,7 +355,7 @@ const StorePage = () => {
                                             </p>
                                             <div className="flex items-center justify-between">
                                                 <span className="text-[10px] text-muted font-black uppercase tracking-widest">
-                                                    {product.variants?.length || 0} plan{(product.variants?.length || 0) !== 1 ? 's' : ''} available
+                                                    {variants.length} plan{variants.length !== 1 ? 's' : ''} available
                                                 </span>
                                                 <span className="text-accent font-black text-[10px] uppercase tracking-widest flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                                                     View Plans <ArrowRight size={12} />
@@ -370,13 +372,16 @@ const StorePage = () => {
 
             {/* Product Modal */}
             <AnimatePresence>
-                {modalProduct && (
-                    <ProductModal
-                        product={modalProduct}
-                        description={stripHtml(productDescriptions[modalProduct.id] || modalProduct.description)}
-                        onClose={() => setModalProduct(null)}
-                    />
-                )}
+                {modalProduct && (() => {
+                    const fullData = fullProducts[modalProduct.id] || modalProduct;
+                    return (
+                        <ProductModal
+                            product={fullData}
+                            description={stripHtml(fullData.description || modalProduct.description)}
+                            onClose={() => setModalProduct(null)}
+                        />
+                    );
+                })()}
             </AnimatePresence>
         </div>
     );

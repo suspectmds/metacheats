@@ -12,7 +12,8 @@ const SELLAUTH_CONFIG = {
     API_KEY: '5561865|TOancIGgSuESgevxAri1HQKVpysGfjfrrXKrKl3Laed0e7f8',
     SECRET: '74193d0b18f84470e0e69f452c152d8d9083f071f2c00b620aa6510692c9b976',
     BASE_URL: 'https://api.sellauth.com/v1',
-    STORE_URL: 'https://metacheat.org'
+    STORE_URL: 'https://metacheats.com',
+    SHOP_DOMAIN: 'metacheat.mysellauth.com' // Singular 'metacheat'
 };
 
 export const SellAuth = {
@@ -21,22 +22,12 @@ export const SellAuth = {
      */
     getProducts: async () => {
         try {
-            const response = await fetch(`${SELLAUTH_CONFIG.BASE_URL}/shops/${SELLAUTH_CONFIG.SHOP_ID}/products?per_page=100`, {
-                headers: {
-                    'Authorization': `Bearer ${SELLAUTH_CONFIG.API_KEY}`,
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                console.error('SellAuth API Response Not OK:', response.status, response.statusText);
-                throw new Error('Failed to fetch products from SellAuth');
-            }
-
+            const response = await fetch('/api/products');
+            if (!response.ok) throw new Error('Failed to fetch from proxy');
             const data = await response.json();
-            return data.data || data.products || data || [];
+            return data.products || [];
         } catch (error) {
-            console.error('SellAuth Error:', error);
+            console.error('SellAuth Proxy Error:', error);
             return [];
         }
     },
@@ -46,15 +37,11 @@ export const SellAuth = {
      */
     getProductDetails: async (productId) => {
         try {
-            const response = await fetch(`${SELLAUTH_CONFIG.BASE_URL}/shops/${SELLAUTH_CONFIG.SHOP_ID}/products/${productId}`, {
-                headers: {
-                    'Authorization': `Bearer ${SELLAUTH_CONFIG.API_KEY}`,
-                    'Accept': 'application/json'
-                }
-            });
+            const response = await fetch(`/api/product-detail/${productId}`);
             if (!response.ok) return null;
             return await response.json();
         } catch (error) {
+            console.error('SellAuth Product Detail Error:', error);
             return null;
         }
     },
@@ -64,17 +51,10 @@ export const SellAuth = {
      */
     getGroups: async () => {
         try {
-            const response = await fetch(`${SELLAUTH_CONFIG.BASE_URL}/shops/${SELLAUTH_CONFIG.SHOP_ID}/groups`, {
-                headers: {
-                    'Authorization': `Bearer ${SELLAUTH_CONFIG.API_KEY}`,
-                    'Accept': 'application/json'
-                }
-            });
-
+            const response = await fetch('/api/products');
             if (!response.ok) return [];
-
             const data = await response.json();
-            return data.data || data.groups || data || [];
+            return data.groups || [];
         } catch (error) {
             console.error('SellAuth Groups Error:', error);
             return [];
@@ -117,21 +97,15 @@ export const SellAuth = {
      */
     getFeedbacks: async () => {
         try {
-            const response = await fetch(`${SELLAUTH_CONFIG.BASE_URL}/shops/${SELLAUTH_CONFIG.SHOP_ID}/feedbacks?per_page=5`, {
-                headers: {
-                    'Authorization': `Bearer ${SELLAUTH_CONFIG.API_KEY}`,
-                    'Accept': 'application/json'
-                }
-            });
-
+            const response = await fetch('/api/reviews');
             if (!response.ok) return [];
-
             const data = await response.json();
-            const raw = data.data || data.feedbacks || [];
+            // Map the backend structure to what the frontend expects
+            const raw = data.reviews || [];
             return raw.map(f => ({
-                rating: f.stars || f.rating || 5,
-                comment: f.message || f.comment || f.feedback || "",
-                customer_email: f.invoice?.email || f.email || "Anonymous"
+                rating: f.rating || 5,
+                comment: f.comment || f.message || "Premium service!",
+                customer_email: f.user || "Anonymous"
             }));
         } catch (error) {
             console.error('SellAuth Feedbacks Error:', error);
